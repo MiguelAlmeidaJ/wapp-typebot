@@ -1,0 +1,11 @@
+CRONTAB
+@reboot /home/deploy/dct/startup.sh
+#@reboot /home/deploy/dct/chmod.sh
+
+
+IMPORTAR BANCO:
+mysql --default-character-set=utf8mb4 -p < banco.sql
+
+
+DENTRO DO FINANCEIRO PRECISA CRIAR UM ATALHO CHAMADO "contrato" --> "/home/deploy/dct/financeiro/assets/upload/contratos"
+
