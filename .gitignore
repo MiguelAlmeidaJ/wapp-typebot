@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Environment files / secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Sequelize local configuration
+backend/config/config.json
+backend/config/*.local.json
+
+# WhatsApp Web runtime data
+.wwebjs_auth/
+.wwebjs_cache/
+backend/.wwebjs_auth/
+backend/.wwebjs_cache/
+
+# Logs / coverage
+*.log
+logs/
+coverage/
+
+# Frontend build
+frontend/build/
+
+# OS / editor
+.DS_Store
+Thumbs.db

@@ -1,0 +1,20 @@
+{
+  "development": {
+    "username": "whaticket",
+    "password": "change-me",
+    "database": "whaticket",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "test": {
+    "username": "whaticket",
+    "password": "change-me",
+    "database": "whaticket_test",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "production": {
+    "use_env_variable": "DATABASE_URL",
+    "dialect": "mysql"
+  }
+}
