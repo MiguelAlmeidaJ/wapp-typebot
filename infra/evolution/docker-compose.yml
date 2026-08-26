@@ -1,0 +1,87 @@
+services:
+  evolution-postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: evolution
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${EVOLUTION_POSTGRES_PASSWORD}
+    volumes:
+      - evolution_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution -d evolution"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  evolution-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - evolution_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    restart: unless-stopped
+    depends_on:
+      evolution-postgres:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SERVER_NAME: wapp-evolution
+      SERVER_TYPE: http
+      SERVER_PORT: 8080
+      SERVER_URL: http://localhost:8080
+
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:${EVOLUTION_POSTGRES_PASSWORD}@evolution-postgres:5432/evolution
+      DATABASE_CONNECTION_CLIENT_NAME: wapp-evolution
+
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://evolution-redis:6379
+      CACHE_REDIS_PREFIX_KEY: wapp-evolution
+      CACHE_REDIS_SAVE_INSTANCES: "true"
+      CACHE_LOCAL_ENABLED: "false"
+
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "false"
+
+      CONFIG_SESSION_PHONE_CLIENT: Wapp
+      CONFIG_SESSION_PHONE_NAME: Chrome
+      QRCODE_LIMIT: 30
+
+      LANGUAGE: pt-BR
+      LOG_LEVEL: ERROR,WARN,INFO
+      LOG_COLOR: "true"
+      LOG_BAILEYS: error
+
+      TELEMETRY_ENABLED: "false"
+
+      WEBHOOK_GLOBAL_ENABLED: "false"
+
+      TYPEBOT_ENABLED: "false"
+      CHATWOOT_ENABLED: "false"
+      OPENAI_ENABLED: "false"
+      DIFY_ENABLED: "false"
+      N8N_ENABLED: "false"
+      EVOAI_ENABLED: "false"
+      FLOWISE_ENABLED: "false"
+
+    volumes:
+      - evolution_instances:/evolution/instances
+
+volumes:
+  evolution_postgres:
+  evolution_redis:
+  evolution_instances:

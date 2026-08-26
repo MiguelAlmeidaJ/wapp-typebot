@@ -1,0 +1,256 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum CompanyStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum WhatsAppProvider {
+  EVOLUTION_BAILEYS
+  META_CLOUD
+}
+
+enum WhatsAppConnectionStatus {
+  CREATED
+  CONNECTING
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum TicketStatus {
+  OPEN
+  PENDING
+  CLOSED
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
+  VIDEO
+  DOCUMENT
+  STICKER
+  LOCATION
+  CONTACT
+  UNKNOWN
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  SUPERVISOR
+  AGENT
+}
+
+model Company {
+  id                  String               @id @default(uuid()) @db.Char(36)
+  name                String               @db.VarChar(160)
+  slug                String               @unique @db.VarChar(80)
+  status              CompanyStatus        @default(ACTIVE)
+  memberships         CompanyMembership[]
+  whatsappConnections WhatsAppConnection[]
+  contacts            Contact[]
+  tickets             Ticket[]
+  messages            Message[]
+  queues              Queue[]
+  sessions            Session[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([status])
+}
+
+model User {
+  id           String              @id @default(uuid()) @db.Char(36)
+  name         String              @db.VarChar(160)
+  email        String              @unique @db.VarChar(190)
+  passwordHash String              @db.VarChar(255)
+  isActive     Boolean             @default(true)
+  memberships  CompanyMembership[]
+  sentMessages Message[]
+  sessions     Session[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([isActive])
+}
+
+model CompanyMembership {
+  id               String         @id @default(uuid()) @db.Char(36)
+  companyId        String         @db.Char(36)
+  userId           String         @db.Char(36)
+  role             MembershipRole @default(AGENT)
+  isActive         Boolean        @default(true)
+  company          Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions         Session[]
+  queueMemberships QueueMember[]
+  assignedTickets  Ticket[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([companyId, userId])
+  @@index([userId, isActive])
+  @@index([companyId, role])
+}
+
+model Session {
+  id               String            @id @default(uuid()) @db.Char(36)
+  userId           String            @db.Char(36)
+  companyId        String            @db.Char(36)
+  membershipId     String            @db.Char(36)
+  refreshTokenHash String            @unique @db.Char(64)
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  ipAddress        String?           @db.VarChar(64)
+  userAgent        String?           @db.VarChar(500)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  membership       CompanyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([userId, revokedAt])
+  @@index([companyId, revokedAt])
+  @@index([expiresAt])
+}
+
+model WhatsAppConnection {
+  id             String                   @id @default(uuid()) @db.Char(36)
+  companyId      String                   @db.Char(36)
+  name           String                   @db.VarChar(120)
+  provider       WhatsAppProvider         @default(EVOLUTION_BAILEYS)
+  instanceName   String                   @unique @db.VarChar(120)
+  status         WhatsAppConnectionStatus @default(CREATED)
+  phoneNumber    String?                  @db.VarChar(32)
+  profileName    String?                  @db.VarChar(160)
+  lastError      String?                  @db.Text
+  lastEventAt    DateTime?
+  acceptGroups   Boolean                  @default(false)
+  defaultQueueId String?                  @db.Char(36)
+  company        Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  defaultQueue   Queue?                   @relation(fields: [defaultQueueId], references: [id], onDelete: SetNull)
+  tickets        Ticket[]
+  messages       Message[]
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+  @@index([companyId, defaultQueueId])
+}
+
+model Contact {
+  id          String    @id @default(uuid()) @db.Char(36)
+  companyId   String    @db.Char(36)
+  remoteJid   String    @db.VarChar(190)
+  phoneNumber String?   @db.VarChar(32)
+  name        String    @db.VarChar(190)
+  isGroup     Boolean   @default(false)
+  lastSeenAt  DateTime?
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tickets     Ticket[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([companyId, remoteJid])
+  @@index([companyId, phoneNumber])
+  @@index([companyId, name])
+}
+
+model Ticket {
+  id                   String             @id @default(uuid()) @db.Char(36)
+  companyId            String             @db.Char(36)
+  whatsappConnectionId String             @db.Char(36)
+  contactId            String             @db.Char(36)
+  queueId              String?            @db.Char(36)
+  assignedMembershipId String?            @db.Char(36)
+  activeKey            String?            @unique @db.VarChar(100)
+  status               TicketStatus       @default(OPEN)
+  unreadCount          Int                @default(0)
+  lastMessage          String?            @db.Text
+  lastMessageAt        DateTime           @default(now())
+  closedAt             DateTime?
+  company              Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  whatsappConnection   WhatsAppConnection @relation(fields: [whatsappConnectionId], references: [id], onDelete: Cascade)
+  contact              Contact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  queue                Queue?             @relation(fields: [queueId], references: [id], onDelete: SetNull)
+  assignedMembership   CompanyMembership? @relation(fields: [assignedMembershipId], references: [id], onDelete: SetNull)
+  messages             Message[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([companyId, status, lastMessageAt])
+  @@index([whatsappConnectionId, status])
+  @@index([contactId, status])
+  @@index([companyId, queueId, status])
+  @@index([companyId, assignedMembershipId, status])
+}
+
+model Message {
+  id                   String             @id @default(uuid()) @db.Char(36)
+  companyId            String             @db.Char(36)
+  ticketId             String             @db.Char(36)
+  whatsappConnectionId String             @db.Char(36)
+  sentByUserId         String?            @db.Char(36)
+  externalId           String             @db.VarChar(190)
+  direction            MessageDirection
+  type                 MessageType        @default(TEXT)
+  body                 String?            @db.Text
+  mediaMimeType        String?            @db.VarChar(190)
+  mediaFileName        String?            @db.VarChar(255)
+  quotedExternalId     String?            @db.VarChar(190)
+  timestamp            DateTime
+  rawPayload           Json?
+  company              Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  ticket               Ticket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  whatsappConnection   WhatsAppConnection @relation(fields: [whatsappConnectionId], references: [id], onDelete: Cascade)
+  sentByUser           User?              @relation(fields: [sentByUserId], references: [id], onDelete: SetNull)
+  createdAt            DateTime           @default(now())
+
+  @@unique([whatsappConnectionId, externalId])
+  @@index([ticketId, timestamp])
+  @@index([companyId, timestamp])
+}
+
+model Queue {
+  id                 String               @id @default(uuid()) @db.Char(36)
+  companyId          String               @db.Char(36)
+  name               String               @db.VarChar(120)
+  isActive           Boolean              @default(true)
+  company            Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  members            QueueMember[]
+  tickets            Ticket[]
+  defaultConnections WhatsAppConnection[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, isActive])
+}
+
+model QueueMember {
+  id           String            @id @default(uuid()) @db.Char(36)
+  queueId      String            @db.Char(36)
+  membershipId String            @db.Char(36)
+  queue        Queue             @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  membership   CompanyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  createdAt    DateTime          @default(now())
+
+  @@unique([queueId, membershipId])
+  @@index([membershipId])
+}

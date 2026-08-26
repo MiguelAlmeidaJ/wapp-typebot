@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { AuthProvider } from "@/components/auth-provider";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Wapp",
-  description: "Plataforma de atendimento e automação para WhatsApp.",
+  title: {
+    default: "Wapp",
+    template: "%s · Wapp"
+  },
+  description: "Atendimento, automação e operação de conversas.",
   authors: [
     {
       name: "Miguel Almeida",
@@ -21,7 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body suppressHydrationWarning>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

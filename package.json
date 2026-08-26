@@ -21,7 +21,14 @@
     "dev:api": "pnpm --filter @wapp/api dev",
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml down",
-    "infra:logs": "docker compose -f infra/docker-compose.yml logs -f"
+    "infra:logs": "docker compose -f infra/docker-compose.yml logs -f",
+    "db:generate": "pnpm --filter @wapp/api db:generate",
+    "db:migrate": "pnpm --filter @wapp/api db:migrate",
+    "db:seed": "pnpm --filter @wapp/api db:seed",
+    "db:studio": "pnpm --filter @wapp/api db:studio",
+    "evolution:up": "docker compose --env-file infra/evolution/.env -f infra/evolution/docker-compose.yml up -d",
+    "evolution:down": "docker compose --env-file infra/evolution/.env -f infra/evolution/docker-compose.yml down",
+    "evolution:logs": "docker compose --env-file infra/evolution/.env -f infra/evolution/docker-compose.yml logs -f evolution-api"
   },
   "engines": {
     "node": ">=24 <25",

@@ -53,3 +53,12 @@ legacy/backend/config/config.json
 legacy/backend/config/*.legacy.local.json
 legacy/**/.env
 legacy/**/.env.*
+
+# --- WAPP P0.3 ---
+apps/api/src/generated/prisma/
+apps/api/.runtime/
+# --- /WAPP P0.3 ---
+
+# --- WAPP P0.5 ---
+infra/evolution/.env
+# --- /WAPP P0.5 ---
