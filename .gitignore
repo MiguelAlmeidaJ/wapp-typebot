@@ -35,3 +35,21 @@ frontend/build/
 # OS / editor
 .DS_Store
 Thumbs.db
+
+# --- WAPP MONOREPO ---
+.turbo/
+.pnpm-store/
+**/.next/
+**/dist/
+*.patch
+.runtime/
+**/.runtime/
+legacy/**/.env
+legacy/**/.env.*
+# --- /WAPP MONOREPO ---
+
+# Legacy local configuration
+legacy/backend/config/config.json
+legacy/backend/config/*.legacy.local.json
+legacy/**/.env
+legacy/**/.env.*
