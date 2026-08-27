@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState
+} from "react";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/auth-provider";
 import { WappMark } from "@/components/wapp-mark";
 import { ApiError } from "@/lib/api";
+import {
+  roleCan,
+  type UiPermission
+} from "@/lib/permissions";
 
 interface AdminPingResponse {
   status: "ok";
@@ -21,22 +29,77 @@ const roleLabels = {
   AGENT: "Atendente"
 } as const;
 
-const navigation = [
-  "Visão geral",
-  "Conversas",
-  "Contatos",
-  "Filas",
-  "Conexões",
-  "Automações"
+const navigation: Array<{
+  label: string;
+  href: string;
+  permission: UiPermission;
+}> = [
+  {
+    label: "Visão geral",
+    href: "/dashboard",
+    permission: "dashboard.view"
+  },
+  {
+    label: "Conversas",
+    href: "/dashboard/conversations",
+    permission: "conversations.view"
+  },
+  {
+    label: "Contatos",
+    href: "/dashboard/contacts",
+    permission: "contacts.view"
+  },
+  {
+    label: "Filas",
+    href: "/dashboard/queues",
+    permission: "queues.manage"
+  },
+  {
+    label: "Conexões",
+    href: "/dashboard/connections",
+    permission: "connections.manage"
+  },
+  {
+    label: "Equipe",
+    href: "/dashboard/team",
+    permission: "team.manage"
+  }
 ];
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { session, loading, logout, request, subscribe } = useAuth();
+  const {
+    session,
+    loading,
+    logout,
+    request,
+    subscribe
+  } = useAuth();
 
   const [rbacState, setRbacState] = useState<
-    "idle" | "checking" | "success" | "forbidden" | "error"
+    "idle" |
+    "checking" |
+    "success" |
+    "forbidden" |
+    "error"
   >("idle");
+
+  const visibleNavigation = useMemo(
+    () =>
+      session
+        ? navigation.filter(item =>
+            roleCan(
+              session.role,
+              item.permission
+            )
+          )
+        : [],
+    [session]
+  );
+
+  const canTestAdmin =
+    session &&
+    roleCan(session.role, "admin.test");
 
   useEffect(() => {
     if (!loading && !session) {
@@ -45,8 +108,14 @@ export default function DashboardPage() {
   }, [loading, router, session]);
 
   useEffect(() => {
-    if (!session) return;
-    return subscribe("/api/v1/realtime/events", () => {});
+    if (!session) {
+      return;
+    }
+
+    return subscribe(
+      "/api/v1/realtime/events",
+      () => {}
+    );
   }, [session, subscribe]);
 
   async function handleLogout() {
@@ -58,10 +127,16 @@ export default function DashboardPage() {
     setRbacState("checking");
 
     try {
-      await request<AdminPingResponse>("/api/v1/admin/ping");
+      await request<AdminPingResponse>(
+        "/api/v1/admin/ping"
+      );
+
       setRbacState("success");
     } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
+      if (
+        error instanceof ApiError &&
+        error.status === 403
+      ) {
         setRbacState("forbidden");
         return;
       }
@@ -84,40 +159,48 @@ export default function DashboardPage() {
         <div className="sidebar__top">
           <WappMark compact />
 
-          <nav className="sidebar__nav" aria-label="Navegação principal">
-            {navigation.map((item, index) => (
-              <button
-                className={index === 0 ? "nav-item nav-item--active" : "nav-item"}
-                key={item}
-                onClick={() => {
-                  if (item === "Conversas") {
-                    router.push("/dashboard/conversations");
+          <nav
+            className="sidebar__nav"
+            aria-label="Navegação principal"
+          >
+            {visibleNavigation.map(
+              (item, index) => (
+                <button
+                  className={
+                    index === 0
+                      ? "nav-item nav-item--active"
+                      : "nav-item"
                   }
-
-                  if (item === "Conexões") {
-                    router.push("/dashboard/connections");
+                  key={item.href}
+                  onClick={() =>
+                    router.push(item.href)
                   }
-
-                  if (item === "Filas") {
-                    router.push("/dashboard/queues");
-                  }
-                }}
-                type="button"
-              >
-                <span className="nav-item__dot" aria-hidden="true" />
-                <span>{item}</span>
-              </button>
-            ))}
+                  type="button"
+                >
+                  <span
+                    className="nav-item__dot"
+                    aria-hidden="true"
+                  />
+                  <span>{item.label}</span>
+                </button>
+              )
+            )}
           </nav>
         </div>
 
         <div className="sidebar__user">
           <div className="avatar">
-            {session.user.name.slice(0, 1).toUpperCase()}
+            {session.user.name
+              .slice(0, 1)
+              .toUpperCase()}
           </div>
           <div className="sidebar__user-copy">
-            <strong>{session.user.name}</strong>
-            <span>{roleLabels[session.role]}</span>
+            <strong>
+              {session.user.name}
+            </strong>
+            <span>
+              {roleLabels[session.role]}
+            </span>
           </div>
         </div>
       </aside>
@@ -128,8 +211,12 @@ export default function DashboardPage() {
             <span className="topbar__company">
               {session.company.name}
             </span>
-            <span className="topbar__separator">/</span>
-            <span className="topbar__section">Visão geral</span>
+            <span className="topbar__separator">
+              /
+            </span>
+            <span className="topbar__section">
+              Visão geral
+            </span>
           </div>
 
           <button
@@ -144,11 +231,16 @@ export default function DashboardPage() {
         <div className="dashboard">
           <div className="dashboard__intro">
             <div>
-              <span className="eyebrow">Workspace ativo</span>
-              <h1>Olá, {session.user.name.split(" ")[0]}.</h1>
+              <span className="eyebrow">
+                Workspace ativo
+              </span>
+              <h1>
+                Olá,{" "}
+                {session.user.name.split(" ")[0]}.
+              </h1>
               <p>
-                A autenticação do Wapp já está conectada à nova API.
-                Agora podemos começar a colocar os módulos de operação aqui.
+                Seu acesso está carregado conforme
+                o papel definido nesta empresa.
               </p>
             </div>
 
@@ -159,30 +251,52 @@ export default function DashboardPage() {
 
           <div className="metric-grid">
             <article className="metric-card">
-              <span className="metric-card__label">Conversas abertas</span>
+              <span className="metric-card__label">
+                Conversas
+              </span>
               <strong>—</strong>
-              <small>Aguardando módulo de tickets</small>
+              <small>
+                Acompanhe em Conversas
+              </small>
             </article>
 
             <article className="metric-card">
-              <span className="metric-card__label">Na fila</span>
+              <span className="metric-card__label">
+                Filas
+              </span>
               <strong>—</strong>
-              <small>Aguardando módulo de filas</small>
+              <small>
+                Distribuição operacional
+              </small>
             </article>
 
             <article className="metric-card">
-              <span className="metric-card__label">Conexões</span>
+              <span className="metric-card__label">
+                Conexões
+              </span>
               <strong>—</strong>
-              <small>Aguardando módulo WhatsApp</small>
+              <small>
+                WhatsApp conectado ao Wapp
+              </small>
             </article>
           </div>
 
-          <div className="dashboard-grid">
+          <div
+            className={
+              canTestAdmin
+                ? "dashboard-grid"
+                : "dashboard-grid dashboard-grid--single"
+            }
+          >
             <article className="panel">
               <div className="panel__heading">
                 <div>
-                  <span className="eyebrow">Sessão</span>
-                  <h2>Fundação autenticada</h2>
+                  <span className="eyebrow">
+                    Sessão
+                  </span>
+                  <h2>
+                    Fundação autenticada
+                  </h2>
                 </div>
                 <span className="status-pill status-pill--online">
                   online
@@ -192,11 +306,15 @@ export default function DashboardPage() {
               <dl className="details-list">
                 <div>
                   <dt>Usuário</dt>
-                  <dd>{session.user.email}</dd>
+                  <dd>
+                    {session.user.email}
+                  </dd>
                 </div>
                 <div>
                   <dt>Empresa</dt>
-                  <dd>{session.company.slug}</dd>
+                  <dd>
+                    {session.company.slug}
+                  </dd>
                 </div>
                 <div>
                   <dt>Perfil</dt>
@@ -205,49 +323,56 @@ export default function DashboardPage() {
               </dl>
             </article>
 
-            <article className="panel">
-              <div className="panel__heading">
-                <div>
-                  <span className="eyebrow">Permissões</span>
-                  <h2>Teste de RBAC</h2>
+            {canTestAdmin && (
+              <article className="panel">
+                <div className="panel__heading">
+                  <div>
+                    <span className="eyebrow">
+                      Permissões
+                    </span>
+                    <h2>Teste de RBAC</h2>
+                  </div>
                 </div>
-              </div>
 
-              <p className="panel__description">
-                A rota abaixo aceita apenas OWNER e ADMIN. Ela valida sessão,
-                empresa e papel diretamente na API.
-              </p>
-
-              <button
-                className="secondary-button"
-                disabled={rbacState === "checking"}
-                onClick={testRbac}
-                type="button"
-              >
-                {rbacState === "checking"
-                  ? "Validando…"
-                  : "Testar permissão administrativa"}
-              </button>
-
-              {rbacState === "success" && (
-                <p className="inline-result inline-result--success">
-                  RBAC validado. A API reconheceu seu acesso administrativo.
+                <p className="panel__description">
+                  Esta rota administrativa
+                  valida sessão, empresa e
+                  capability diretamente na API.
                 </p>
-              )}
 
-              {rbacState === "forbidden" && (
-                <p className="inline-result">
-                  Seu perfil está autenticado, mas não possui acesso
-                  administrativo.
-                </p>
-              )}
+                <button
+                  className="secondary-button"
+                  disabled={
+                    rbacState === "checking"
+                  }
+                  onClick={testRbac}
+                  type="button"
+                >
+                  {rbacState === "checking"
+                    ? "Validando…"
+                    : "Testar permissão administrativa"}
+                </button>
 
-              {rbacState === "error" && (
-                <p className="inline-result">
-                  Não foi possível validar a permissão agora.
-                </p>
-              )}
-            </article>
+                {rbacState === "success" && (
+                  <p className="inline-result inline-result--success">
+                    RBAC validado.
+                  </p>
+                )}
+
+                {rbacState === "forbidden" && (
+                  <p className="inline-result">
+                    Acesso administrativo negado.
+                  </p>
+                )}
+
+                {rbacState === "error" && (
+                  <p className="inline-result">
+                    Não foi possível validar
+                    agora.
+                  </p>
+                )}
+              </article>
+            )}
           </div>
         </div>
       </section>

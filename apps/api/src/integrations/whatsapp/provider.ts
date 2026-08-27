@@ -20,16 +20,37 @@ export interface SendTextInput {
   text: string;
 }
 
+export interface DownloadMediaInput {
+  instanceName: string;
+  message: Record<string, unknown>;
+  convertToMp4?: boolean;
+}
+
+export interface DownloadMediaResult {
+  base64: string;
+  mimetype?: string;
+  fileName?: string;
+  mediaType?: string;
+}
+
 export interface WhatsAppProviderClient {
   createInstance(
     input: CreateWhatsAppInstanceInput
   ): Promise<WhatsAppQrResult>;
 
-  connect(instanceName: string): Promise<WhatsAppQrResult>;
+  connect(
+    instanceName: string
+  ): Promise<WhatsAppQrResult>;
 
   connectionState(
     instanceName: string
   ): Promise<WhatsAppConnectionState>;
 
-  sendText(input: SendTextInput): Promise<unknown>;
+  sendText(
+    input: SendTextInput
+  ): Promise<unknown>;
+
+  downloadMedia(
+    input: DownloadMediaInput
+  ): Promise<DownloadMediaResult>;
 }

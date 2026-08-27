@@ -7,6 +7,10 @@ import {
   type WappRole,
   verifyAccessToken
 } from "../../lib/tokens.js";
+import {
+  roleHasPermission,
+  type WappPermission
+} from "../../security/permissions.js";
 
 export interface AuthContext extends AccessContext {
   user: {
@@ -41,7 +45,9 @@ export async function requireAuth(
   let tokenContext: AccessContext;
 
   try {
-    tokenContext = await verifyAccessToken(getBearerToken(request));
+    tokenContext = await verifyAccessToken(
+      getBearerToken(request)
+    );
   } catch {
     throw new AppError(
       "Token de acesso inválido ou expirado.",
@@ -112,6 +118,23 @@ export async function requireRoles(
   const auth = await requireAuth(request);
 
   if (!allowedRoles.includes(auth.role)) {
+    throw new AppError(
+      "Você não possui permissão para executar esta ação.",
+      403,
+      "FORBIDDEN"
+    );
+  }
+
+  return auth;
+}
+
+export async function requirePermission(
+  request: FastifyRequest,
+  permission: WappPermission
+): Promise<AuthContext> {
+  const auth = await requireAuth(request);
+
+  if (!roleHasPermission(auth.role, permission)) {
     throw new AppError(
       "Você não possui permissão para executar esta ação.",
       403,

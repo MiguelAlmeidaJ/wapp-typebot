@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import { requireAuth, requireRoles } from "../auth/auth.guard.js";
+import { requirePermission } from "../auth/auth.guard.js";
 import {
   createQueue,
   listQueues,
@@ -22,7 +22,10 @@ const queueMembersSchema = z.object({
 
 export async function queueRoutes(app: FastifyInstance) {
   app.get("/api/v1/queues", async request => {
-    const auth = await requireAuth(request);
+    const auth = await requirePermission(
+      request,
+      "queues.read"
+    );
 
     return {
       queues: await listQueues(auth.companyId)
@@ -30,7 +33,11 @@ export async function queueRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/v1/queues", async (request, reply) => {
-    const auth = await requireRoles(request, ["OWNER", "ADMIN"]);
+    const auth = await requirePermission(
+      request,
+      "queues.manage"
+    );
+
     const input = createQueueSchema.parse(request.body);
 
     return reply.status(201).send({
@@ -41,17 +48,26 @@ export async function queueRoutes(app: FastifyInstance) {
     });
   });
 
-  app.put("/api/v1/queues/:id/members", async request => {
-    const auth = await requireRoles(request, ["OWNER", "ADMIN"]);
-    const params = queueIdSchema.parse(request.params);
-    const input = queueMembersSchema.parse(request.body);
+  app.put(
+    "/api/v1/queues/:id/members",
+    async request => {
+      const auth = await requirePermission(
+        request,
+        "queues.manage"
+      );
 
-    return {
-      queues: await replaceQueueMembers({
-        companyId: auth.companyId,
-        queueId: params.id,
-        membershipIds: input.membershipIds
-      })
-    };
-  });
+      const params = queueIdSchema.parse(request.params);
+      const input = queueMembersSchema.parse(
+        request.body
+      );
+
+      return {
+        queues: await replaceQueueMembers({
+          companyId: auth.companyId,
+          queueId: params.id,
+          membershipIds: input.membershipIds
+        })
+      };
+    }
+  );
 }

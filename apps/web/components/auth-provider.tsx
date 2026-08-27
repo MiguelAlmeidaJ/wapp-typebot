@@ -14,7 +14,8 @@ import {
 import {
   ApiError,
   apiFetch,
-  expectJson
+  expectJson,
+  parseApiError
 } from "@/lib/api";
 import type {
   AuthSession,
@@ -36,6 +37,7 @@ interface AuthContextValue {
   login(input: LoginInput): Promise<void>;
   logout(): Promise<void>;
   request<T>(path: string, init?: RequestInit): Promise<T>;
+  requestRaw(path: string, init?: RequestInit): Promise<Response>;
   subscribe(
     path: string,
     onEvent: (event: RealtimeEvent) => void
@@ -182,6 +184,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [authenticatedFetch]
   );
 
+  const requestRaw = useCallback(
+    async (path: string, init: RequestInit = {}) => {
+      const response = await authenticatedFetch(
+        path,
+        init
+      );
+
+      if (!response.ok) {
+        throw await parseApiError(response);
+      }
+
+      return response;
+    },
+    [authenticatedFetch]
+  );
+
   const subscribe = useCallback(
     (
       path: string,
@@ -276,9 +294,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       request,
+      requestRaw,
       subscribe
     }),
-    [session, loading, login, logout, request, subscribe]
+    [session, loading, login, logout, request, requestRaw, subscribe]
   );
 
   return (

@@ -32,6 +32,13 @@ enum TicketStatus {
   CLOSED
 }
 
+enum MessageMediaStatus {
+  NONE
+  PENDING
+  READY
+  FAILED
+}
+
 enum MessageDirection {
   INBOUND
   OUTBOUND
@@ -155,21 +162,25 @@ model WhatsAppConnection {
 }
 
 model Contact {
-  id          String    @id @default(uuid()) @db.Char(36)
-  companyId   String    @db.Char(36)
-  remoteJid   String    @db.VarChar(190)
-  phoneNumber String?   @db.VarChar(32)
-  name        String    @db.VarChar(190)
-  isGroup     Boolean   @default(false)
-  lastSeenAt  DateTime?
-  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  tickets     Ticket[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String    @id @default(uuid()) @db.Char(36)
+  companyId    String    @db.Char(36)
+  remoteJid    String    @db.VarChar(190)
+  phoneNumber  String?   @db.VarChar(32)
+  name         String    @db.VarChar(190)
+  whatsappName String?   @db.VarChar(190)
+  email        String?   @db.VarChar(190)
+  notes        String?   @db.Text
+  isGroup      Boolean   @default(false)
+  lastSeenAt   DateTime?
+  company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tickets      Ticket[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@unique([companyId, remoteJid])
   @@index([companyId, phoneNumber])
   @@index([companyId, name])
+  @@index([companyId, email])
 }
 
 model Ticket {
@@ -213,6 +224,10 @@ model Message {
   body                 String?            @db.Text
   mediaMimeType        String?            @db.VarChar(190)
   mediaFileName        String?            @db.VarChar(255)
+  mediaStatus          MessageMediaStatus @default(NONE)
+  mediaStorageKey      String?            @db.VarChar(500)
+  mediaSize            Int?
+  mediaError           String?            @db.Text
   quotedExternalId     String?            @db.VarChar(190)
   timestamp            DateTime
   rawPayload           Json?
@@ -225,6 +240,7 @@ model Message {
   @@unique([whatsappConnectionId, externalId])
   @@index([ticketId, timestamp])
   @@index([companyId, timestamp])
+  @@index([companyId, mediaStatus])
 }
 
 model Queue {

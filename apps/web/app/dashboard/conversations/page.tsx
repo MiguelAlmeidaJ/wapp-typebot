@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/auth-provider";
+import { MessageMedia } from "@/components/messages/message-media";
 import { ApiError } from "@/lib/api";
 
 interface Contact {
@@ -87,6 +88,8 @@ interface Message {
   body: string | null;
   mediaMimeType: string | null;
   mediaFileName: string | null;
+  mediaStatus: "NONE" | "PENDING" | "READY" | "FAILED";
+  mediaSize: number | null;
   timestamp: string;
   sentByUserId: string | null;
 }
@@ -129,6 +132,35 @@ function messageFallback(type: MessageType) {
   };
 
   return `[${labels[type]}]`;
+}
+
+function isMediaMessage(type: MessageType) {
+  return [
+    "IMAGE",
+    "AUDIO",
+    "VIDEO",
+    "DOCUMENT",
+    "STICKER"
+  ].includes(type);
+}
+
+function visibleMessageBody(
+  message: Pick<Message, "type" | "body">
+) {
+  if (!message.body) {
+    return isMediaMessage(message.type)
+      ? null
+      : messageFallback(message.type);
+  }
+
+  if (
+    isMediaMessage(message.type) &&
+    message.body === messageFallback(message.type)
+  ) {
+    return null;
+  }
+
+  return message.body;
 }
 
 function ticketPreview(ticket: Ticket) {
@@ -186,6 +218,10 @@ export default function ConversationsPage() {
     ticket => ticket.status === "PENDING"
   ).length;
   const openCount = tickets.filter(ticket => ticket.status === "OPEN").length;
+
+  const hasPendingMedia = messages.some(
+    message => message.mediaStatus === "PENDING"
+  );
 
   const loadTickets = useCallback(async () => {
     const payload = await request<TicketsResponse>(
@@ -307,6 +343,53 @@ export default function ConversationsPage() {
     });
   }, [messages]);
 
+  // [P1.2f pending media fallback]
+  // SSE remains primary. This polls only while media is still processing.
+  useEffect(() => {
+    if (
+      !session ||
+      !selectedId ||
+      !hasPendingMedia
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const refreshPendingMedia = async () => {
+      try {
+        const payload = await request<MessagesResponse>(
+          `/api/v1/tickets/${selectedId}/messages`
+        );
+
+        if (!cancelled) {
+          setMessages(payload.messages);
+        }
+      } catch {
+        // Non-fatal fallback. Realtime or the next tick can recover.
+      }
+    };
+
+    const interval = window.setInterval(
+      () => {
+        void refreshPendingMedia();
+      },
+      1_200
+    );
+
+    void refreshPendingMedia();
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [
+    hasPendingMedia,
+    request,
+    selectedId,
+    session
+  ]);
+
   async function handleClaim() {
     if (!selectedId) return;
     setClaiming(true);
@@ -405,7 +488,7 @@ export default function ConversationsPage() {
   }
 
   return (
-    <main className="inbox-screen">
+    <main className="inbox-screen inbox-screen--contained">
       <header className="inbox-topbar">
         <div>
           <button
@@ -504,7 +587,7 @@ export default function ConversationsPage() {
           </div>
         </aside>
 
-        <section className="chat-panel chat-panel--operations">
+        <section className="conversation-panel">
           {!selectedTicket ? (
             <div className="chat-empty">
               <div className="chat-empty__mark">W</div>
@@ -611,8 +694,8 @@ export default function ConversationsPage() {
                 </small>
               </div>
 
-              <div className="message-list message-list--assignment">
-                <div className="message-scroll">
+              <div className="conversation-body">
+                <div className="conversation-scroll">
                 {messages.map(message => (
                   <div
                     className={
@@ -622,26 +705,49 @@ export default function ConversationsPage() {
                     }
                     key={message.id}
                   >
-                    <article className="message-bubble">
-                      {message.type !== "TEXT" && (
-                        <span className="message-kind">
-                          {messageFallback(message.type)}
-                        </span>
+                    <article
+                      className={
+                        isMediaMessage(message.type)
+                          ? "message-bubble message-bubble--media"
+                          : "message-bubble"
+                      }
+                    >
+                      {!isMediaMessage(message.type) &&
+                        message.type !== "TEXT" && (
+                          <span className="message-kind">
+                            {messageFallback(message.type)}
+                          </span>
+                        )}
+
+                      <MessageMedia
+                        fileName={message.mediaFileName}
+                        messageId={message.id}
+                        mimeType={message.mediaMimeType}
+                        status={message.mediaStatus}
+                        type={message.type}
+                      />
+
+                      {visibleMessageBody(message) && (
+                        <p>{visibleMessageBody(message)}</p>
                       )}
-                      <p>{message.body ?? messageFallback(message.type)}</p>
-                      {message.mediaFileName && (
-                        <small className="message-file">
-                          {message.mediaFileName}
-                        </small>
-                      )}
-                      <time>{dateTimeLabel(message.timestamp)}</time>
+
+                      {!isMediaMessage(message.type) &&
+                        message.mediaFileName && (
+                          <small className="message-file">
+                            {message.mediaFileName}
+                          </small>
+                        )}
+
+                      <time>
+                        {dateTimeLabel(message.timestamp)}
+                      </time>
                     </article>
                   </div>
                 ))}
                 <div ref={bottomRef} />
                               </div>
 
-                <form className="composer composer--sticky" onSubmit={handleSend}>
+                <form className="conversation-composer" onSubmit={handleSend}>
                 <textarea
                   maxLength={4096}
                   onChange={event => setText(event.target.value)}

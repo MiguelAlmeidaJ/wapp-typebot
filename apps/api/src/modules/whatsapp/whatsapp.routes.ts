@@ -1,10 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
-import {
-  requireAuth,
-  requireRoles
-} from "../auth/auth.guard.js";
+import { requirePermission } from "../auth/auth.guard.js";
 import {
   connectConnection,
   createConnection,
@@ -31,38 +28,69 @@ const testMessageSchema = z.object({
   number: z
     .string()
     .trim()
-    .regex(/^\d{10,15}$/, "Use somente números com DDI e DDD."),
+    .regex(
+      /^\d{10,15}$/,
+      "Use somente números com DDI e DDD."
+    ),
   text: z.string().trim().min(1).max(4096)
 });
 
-export async function whatsappRoutes(app: FastifyInstance) {
-  app.get("/api/v1/whatsapp/connections", async request => {
-    const auth = await requireAuth(request);
+export async function whatsappRoutes(
+  app: FastifyInstance
+) {
+  app.get(
+    "/api/v1/whatsapp/connections",
+    async request => {
+      const auth = await requirePermission(
+        request,
+        "whatsapp.read"
+      );
 
-    return {
-      connections: await listConnections(auth.companyId)
-    };
-  });
+      return {
+        connections: await listConnections(
+          auth.companyId
+        )
+      };
+    }
+  );
 
-  app.post("/api/v1/whatsapp/connections", async (request, reply) => {
-    const auth = await requireRoles(request, ["OWNER", "ADMIN"]);
-    const input = createConnectionSchema.parse(request.body);
+  app.post(
+    "/api/v1/whatsapp/connections",
+    async (request, reply) => {
+      const auth = await requirePermission(
+        request,
+        "whatsapp.manage"
+      );
 
-    const result = await createConnection({
-      companyId: auth.companyId,
-      companySlug: auth.company.slug,
-      name: input.name
-    });
+      const input = createConnectionSchema.parse(
+        request.body
+      );
 
-    return reply.status(201).send(result);
-  });
+      const result = await createConnection({
+        companyId: auth.companyId,
+        companySlug: auth.company.slug,
+        name: input.name
+      });
+
+      return reply.status(201).send(result);
+    }
+  );
 
   app.patch(
     "/api/v1/whatsapp/connections/:id/settings",
     async request => {
-      const auth = await requireRoles(request, ["OWNER", "ADMIN"]);
-      const params = connectionIdSchema.parse(request.params);
-      const input = connectionSettingsSchema.parse(request.body);
+      const auth = await requirePermission(
+        request,
+        "whatsapp.manage"
+      );
+
+      const params = connectionIdSchema.parse(
+        request.params
+      );
+
+      const input = connectionSettingsSchema.parse(
+        request.body
+      );
 
       return {
         connection: await updateConnectionSettings({
@@ -77,18 +105,33 @@ export async function whatsappRoutes(app: FastifyInstance) {
   app.post(
     "/api/v1/whatsapp/connections/:id/connect",
     async request => {
-      const auth = await requireRoles(request, ["OWNER", "ADMIN"]);
-      const params = connectionIdSchema.parse(request.params);
+      const auth = await requirePermission(
+        request,
+        "whatsapp.manage"
+      );
 
-      return connectConnection(auth.companyId, params.id);
+      const params = connectionIdSchema.parse(
+        request.params
+      );
+
+      return connectConnection(
+        auth.companyId,
+        params.id
+      );
     }
   );
 
   app.post(
     "/api/v1/whatsapp/connections/:id/sync",
     async request => {
-      const auth = await requireAuth(request);
-      const params = connectionIdSchema.parse(request.params);
+      const auth = await requirePermission(
+        request,
+        "whatsapp.read"
+      );
+
+      const params = connectionIdSchema.parse(
+        request.params
+      );
 
       return {
         connection: await syncConnection(
@@ -102,14 +145,18 @@ export async function whatsappRoutes(app: FastifyInstance) {
   app.post(
     "/api/v1/whatsapp/connections/:id/test-message",
     async request => {
-      const auth = await requireRoles(request, [
-        "OWNER",
-        "ADMIN",
-        "SUPERVISOR"
-      ]);
+      const auth = await requirePermission(
+        request,
+        "whatsapp.test"
+      );
 
-      const params = connectionIdSchema.parse(request.params);
-      const input = testMessageSchema.parse(request.body);
+      const params = connectionIdSchema.parse(
+        request.params
+      );
+
+      const input = testMessageSchema.parse(
+        request.body
+      );
 
       return {
         result: await sendTestMessage({

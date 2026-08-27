@@ -200,6 +200,9 @@ function mediaInfo(
     case "DOCUMENT":
       media = record(message.documentMessage);
       break;
+    case "STICKER":
+      media = record(message.stickerMessage);
+      break;
   }
 
   return {

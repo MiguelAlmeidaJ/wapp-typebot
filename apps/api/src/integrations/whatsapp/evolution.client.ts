@@ -2,6 +2,8 @@ import { env } from "../../config/env.js";
 import { AppError } from "../../errors/app-error.js";
 import type {
   CreateWhatsAppInstanceInput,
+  DownloadMediaInput,
+  DownloadMediaResult,
   SendTextInput,
   WhatsAppConnectionState,
   WhatsAppProviderClient,
@@ -182,6 +184,43 @@ export class EvolutionWhatsAppClient implements WhatsAppProviderClient {
         })
       }
     );
+  }
+
+  async downloadMedia(
+    input: DownloadMediaInput
+  ): Promise<DownloadMediaResult> {
+    const response = await this.request<{
+      base64?: string;
+      mimetype?: string;
+      fileName?: string;
+      mediaType?: string;
+    }>(
+      `/chat/getBase64FromMediaMessage/${encodeURIComponent(
+        input.instanceName
+      )}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          message: input.message,
+          convertToMp4: input.convertToMp4 ?? false
+        })
+      }
+    );
+
+    if (!response.base64) {
+      throw new AppError(
+        "A Evolution não retornou o conteúdo da mídia.",
+        502,
+        "EVOLUTION_MEDIA_EMPTY"
+      );
+    }
+
+    return {
+      base64: response.base64,
+      mimetype: response.mimetype,
+      fileName: response.fileName,
+      mediaType: response.mediaType
+    };
   }
 }
 

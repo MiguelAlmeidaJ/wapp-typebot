@@ -8,8 +8,10 @@ import { AppError } from "./errors/app-error.js";
 import { prisma } from "./lib/database.js";
 import { adminRoutes } from "./modules/admin/admin.routes.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
+import { contactRoutes } from "./modules/contacts/contact.routes.js";
 import { whatsappRoutes } from "./modules/whatsapp/whatsapp.routes.js";
 import { ticketRoutes } from "./modules/tickets/ticket.routes.js";
+import { mediaRoutes } from "./modules/media/media.routes.js";
 import { teamRoutes } from "./modules/team/team.routes.js";
 import { realtimeRoutes } from "./modules/realtime/realtime.routes.js";
 import { queueRoutes } from "./modules/queues/queue.routes.js";
@@ -91,9 +93,11 @@ export async function buildApp() {
   }));
 
   await app.register(authRoutes);
+  await app.register(contactRoutes);
   await app.register(adminRoutes);
   await app.register(whatsappRoutes);
   await app.register(ticketRoutes);
+  await app.register(mediaRoutes);
   await app.register(realtimeRoutes);
   await app.register(teamRoutes);
   await app.register(queueRoutes);

@@ -1,6 +1,7 @@
 export type RealtimeEventType =
   | "realtime.ready"
   | "message.created"
+  | "message.updated"
   | "ticket.updated"
   | "ticket.created"
   | "queue.updated"

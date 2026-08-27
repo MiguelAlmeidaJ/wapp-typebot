@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 
 export type RealtimeEventType =
   | "message.created"
+  | "message.updated"
   | "ticket.updated"
   | "ticket.created"
   | "queue.updated"

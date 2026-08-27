@@ -27,6 +27,12 @@ const envSchema = z.object({
   EVOLUTION_WEBHOOK_SECRET: z.string().min(32),
 
   WHATSAPP_SESSION_PATH: z.string().default(".runtime/whatsapp"),
+  MEDIA_STORAGE_PATH: z.string().default(".runtime/media"),
+  MEDIA_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(26_214_400),
   TYPEBOT_URL: z.string().url().optional().or(z.literal(""))
 });
 

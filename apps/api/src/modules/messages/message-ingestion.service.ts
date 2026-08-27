@@ -2,6 +2,7 @@ import type { WhatsAppConnection } from "../../generated/prisma/client.js";
 import { prisma } from "../../lib/database.js";
 import { toPrismaJson } from "../../lib/prisma-json.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
+import { scheduleMessageMediaCapture } from "../media/media-capture.service.js";
 import {
   parseEvolutionMessage,
   type ParsedEvolutionMessage
@@ -77,7 +78,7 @@ export async function ingestEvolutionMessage(
     },
     update: {
       ...(parsed.pushName && !parsed.isGroup
-        ? { name: parsed.pushName }
+        ? { whatsappName: parsed.pushName }
         : {}),
       ...(parsed.phoneNumber
         ? { phoneNumber: parsed.phoneNumber }
@@ -89,6 +90,10 @@ export async function ingestEvolutionMessage(
       remoteJid: parsed.remoteJid,
       phoneNumber: parsed.phoneNumber,
       name: displayName(parsed),
+      whatsappName:
+        parsed.pushName && !parsed.isGroup
+          ? parsed.pushName
+          : undefined,
       isGroup: parsed.isGroup,
       lastSeenAt: parsed.fromMe ? undefined : parsed.timestamp
     }
@@ -120,6 +125,14 @@ export async function ingestEvolutionMessage(
     }
   });
 
+  const hasMedia = [
+    "IMAGE",
+    "AUDIO",
+    "VIDEO",
+    "DOCUMENT",
+    "STICKER"
+  ].includes(parsed.type);
+
   const message = await prisma.message.create({
     data: {
       companyId: connection.companyId,
@@ -129,6 +142,9 @@ export async function ingestEvolutionMessage(
       direction: parsed.fromMe ? "OUTBOUND" : "INBOUND",
       type: parsed.type,
       body: parsed.body,
+      mediaStatus: hasMedia
+        ? "PENDING"
+        : "NONE",
       mediaMimeType: parsed.mediaMimeType,
       mediaFileName: parsed.mediaFileName,
       quotedExternalId: parsed.quotedExternalId,
@@ -166,6 +182,12 @@ export async function ingestEvolutionMessage(
     ticketId: ticket.id,
     messageId: message.id
   });
+
+  if (hasMedia) {
+    scheduleMessageMediaCapture(
+      message.id
+    );
+  }
 
   return {
     ignored: false,
