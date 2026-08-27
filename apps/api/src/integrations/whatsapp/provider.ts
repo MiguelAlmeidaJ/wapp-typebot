@@ -44,6 +44,12 @@ export interface SendWhatsAppAudioInput {
   buffer: Buffer;
 }
 
+export interface ConfigureWebhookInput {
+  instanceName: string;
+  webhookUrl: string;
+  events: string[];
+}
+
 export interface DownloadMediaInput {
   instanceName: string;
   message: Record<string, unknown>;
@@ -69,6 +75,10 @@ export interface WhatsAppProviderClient {
   connectionState(
     instanceName: string
   ): Promise<WhatsAppConnectionState>;
+
+  configureWebhook(
+    input: ConfigureWebhookInput
+  ): Promise<unknown>;
 
   sendText(
     input: SendTextInput

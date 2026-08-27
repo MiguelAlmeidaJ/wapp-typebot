@@ -12,9 +12,15 @@ const envSchema = z.object({
   HOST: z.string().default("0.0.0.0"),
   PORT: z.coerce.number().int().positive().default(4000),
   WEB_URL: z.string().url().default("http://localhost:3000"),
+  TRUST_PROXY: booleanFromEnv,
 
   DATABASE_URL: z.string().url().startsWith("mysql://"),
   REDIS_URL: z.string().min(1).optional(),
+  API_BODY_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(1_048_576),
 
   JWT_SECRET: z.string().min(32),
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
@@ -27,7 +33,16 @@ const envSchema = z.object({
   EVOLUTION_WEBHOOK_SECRET: z.string().min(32),
 
   WHATSAPP_SESSION_PATH: z.string().default(".runtime/whatsapp"),
+  MEDIA_STORAGE_DRIVER: z
+    .enum(["local", "s3"])
+    .default("local"),
   MEDIA_STORAGE_PATH: z.string().default(".runtime/media"),
+  S3_BUCKET: z.string().min(1).optional(),
+  S3_REGION: z.string().min(1).default("us-east-1"),
+  S3_ENDPOINT: z.string().url().optional().or(z.literal("")),
+  S3_FORCE_PATH_STYLE: booleanFromEnv,
+  S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   MEDIA_MAX_BYTES: z.coerce
     .number()
     .int()

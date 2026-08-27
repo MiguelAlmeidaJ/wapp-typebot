@@ -7,6 +7,7 @@ import { prisma } from "../../lib/database.js";
 import { toPrismaJson } from "../../lib/prisma-json.js";
 import type { WappRole } from "../../lib/tokens.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
+import { recordTicketEvent } from "./ticket-event.service.js";
 import { storeMedia } from "../media/media-storage.js";
 
 export type TicketListStatus =
@@ -40,6 +41,14 @@ const ticketInclude = {
           email: true
         }
       }
+    }
+  },
+  tags: {
+    include: {
+      tag: true
+    },
+    orderBy: {
+      createdAt: "asc"
     }
   },
   messages: {
@@ -90,6 +99,26 @@ function sentTimestamp(result: unknown) {
   return Number.isFinite(seconds)
     ? new Date(seconds * 1000)
     : new Date();
+}
+
+function outboundSlaUpdate(
+  ticket: {
+    firstInboundAt: Date | null;
+    firstResponseAt: Date | null;
+  },
+  timestamp: Date
+) {
+  return {
+    lastOutboundAt: timestamp,
+    waitingSince: null,
+    ...(ticket.firstInboundAt &&
+    !ticket.firstResponseAt
+      ? {
+          firstResponseAt:
+            timestamp
+        }
+      : {})
+  };
 }
 
 function canOverrideAssignment(role: WappRole) {
@@ -322,6 +351,23 @@ export async function claimTicket(input: {
     include: ticketInclude
   });
 
+  await recordTicketEvent({
+    companyId:
+      input.companyId,
+    ticketId:
+      updated.id,
+    actorMembershipId:
+      input.membershipId,
+    type: "CLAIMED",
+    metadata: {
+      assignedMembershipId:
+        updated.assignedMembershipId,
+      assigneeName:
+        updated.assignedMembership?.user.name ??
+        null
+    }
+  });
+
   publishRealtime(input.companyId, {
     type: "ticket.updated",
     ticketId: ticket.id
@@ -404,6 +450,38 @@ export async function transferTicket(input: {
     include: ticketInclude
   });
 
+  await recordTicketEvent({
+    companyId:
+      input.companyId,
+    ticketId:
+      updated.id,
+    actorMembershipId:
+      input.actorMembershipId,
+    type: "TRANSFERRED",
+    metadata: {
+      fromQueueId:
+        ticket.queueId,
+      fromQueueName:
+        ticket.queue?.name ??
+        null,
+      toQueueId:
+        updated.queueId,
+      toQueueName:
+        updated.queue?.name ??
+        null,
+      fromMembershipId:
+        ticket.assignedMembershipId,
+      fromAssigneeName:
+        ticket.assignedMembership?.user.name ??
+        null,
+      toMembershipId:
+        updated.assignedMembershipId,
+      toAssigneeName:
+        updated.assignedMembership?.user.name ??
+        null
+    }
+  });
+
   publishRealtime(input.companyId, {
     type: "ticket.updated",
     ticketId: ticket.id
@@ -436,12 +514,175 @@ export async function closeTicket(input: {
     }
   });
 
+  await recordTicketEvent({
+    companyId:
+      input.companyId,
+    ticketId:
+      ticket.id,
+    actorMembershipId:
+      input.membershipId,
+    type: "CLOSED",
+    metadata: {
+      previousStatus:
+        current.status
+    }
+  });
+
   publishRealtime(input.companyId, {
     type: "ticket.updated",
     ticketId: input.ticketId
   });
 
   return ticket;
+}
+
+export async function reopenTicket(input: {
+  companyId: string;
+  ticketId: string;
+  membershipId: string;
+  role: WappRole;
+}) {
+  const current = await getTicket(
+    input.companyId,
+    input.ticketId
+  );
+
+  if (current.status !== "CLOSED") {
+    return {
+      ticket: current,
+      reusedExisting: true
+    };
+  }
+
+  assertCanOperateTicket(
+    current.assignedMembershipId,
+    input.membershipId,
+    input.role
+  );
+
+  await validateMembership(
+    input.companyId,
+    input.membershipId
+  );
+
+  const activeKey =
+    `${current.whatsappConnectionId}:${current.contactId}`;
+
+  const existingActive =
+    await prisma.ticket.findFirst({
+      where: {
+        companyId:
+          input.companyId,
+        whatsappConnectionId:
+          current.whatsappConnectionId,
+        contactId:
+          current.contactId,
+        status: {
+          in: [
+            "OPEN",
+            "PENDING"
+          ]
+        }
+      },
+      include: ticketInclude,
+      orderBy: {
+        lastMessageAt: "desc"
+      }
+    });
+
+  if (existingActive) {
+    return {
+      ticket:
+        existingActive,
+      reusedExisting: true
+    };
+  }
+
+  try {
+    const ticket =
+      await prisma.ticket.update({
+        where: {
+          id: current.id
+        },
+        data: {
+          activeKey,
+          status: "OPEN",
+          assignedMembershipId:
+            input.membershipId,
+          unreadCount: 0,
+          closedAt: null
+        },
+        include: ticketInclude
+      });
+
+      await recordTicketEvent({
+      companyId:
+        input.companyId,
+      ticketId:
+        ticket.id,
+      actorMembershipId:
+        input.membershipId,
+      type: "REOPENED",
+      metadata: {
+        assignedMembershipId:
+          ticket.assignedMembershipId,
+        assigneeName:
+          ticket.assignedMembership?.user.name ??
+          null
+      }
+    });
+
+  publishRealtime(
+      input.companyId,
+      {
+        type: "ticket.updated",
+        ticketId:
+          ticket.id
+      }
+    );
+
+    return {
+      ticket,
+      reusedExisting: false
+    };
+  } catch (error) {
+    /*
+     * A new inbound message can race with reopen and create
+     * another active ticket after the pre-check. The unique
+     * activeKey remains the final safety boundary.
+     */
+    const racedTicket =
+      await prisma.ticket.findFirst({
+        where: {
+          companyId:
+            input.companyId,
+          whatsappConnectionId:
+            current.whatsappConnectionId,
+          contactId:
+            current.contactId,
+          status: {
+            in: [
+              "OPEN",
+              "PENDING"
+            ]
+          }
+        },
+        include: ticketInclude,
+        orderBy: {
+          lastMessageAt: "desc"
+        }
+      });
+
+    if (racedTicket) {
+      return {
+        ticket:
+          racedTicket,
+        reusedExisting: true
+      };
+    }
+
+    throw error;
+  }
 }
 
 export async function sendTicketText(input: {
@@ -512,6 +753,7 @@ export async function sendTicketText(input: {
       externalId,
       direction: "OUTBOUND",
       type: "TEXT",
+      deliveryStatus: "PENDING",
       body: input.text,
       timestamp,
       rawPayload: toPrismaJson(result)
@@ -522,7 +764,11 @@ export async function sendTicketText(input: {
     where: { id: ticket.id },
     data: {
       lastMessage: input.text,
-      lastMessageAt: timestamp
+      lastMessageAt: timestamp,
+      ...outboundSlaUpdate(
+        ticket,
+        timestamp
+      )
     }
   });
 
@@ -797,6 +1043,7 @@ export async function sendTicketMedia(input: {
         direction: "OUTBOUND",
         type:
           descriptor.messageType,
+        deliveryStatus: "PENDING",
         body: isVoiceNote ? null : caption,
         mediaMimeType:
           input.mimetype,
@@ -888,7 +1135,11 @@ export async function sendTicketMedia(input: {
           : caption ??
             descriptor.preview,
       lastMessageAt:
+        timestamp,
+      ...outboundSlaUpdate(
+        ticket,
         timestamp
+      )
     }
   });
 
@@ -904,4 +1155,218 @@ export async function sendTicketMedia(input: {
   );
 
   return readyMessage;
+}
+
+export async function listTicketNotes(
+  companyId: string,
+  ticketId: string
+) {
+  await getTicket(companyId, ticketId);
+
+  return prisma.ticketNote.findMany({
+    where: {
+      companyId,
+      ticketId
+    },
+    include: {
+      authorMembership: {
+        select: {
+          id: true,
+          role: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: {
+      createdAt: "asc"
+    },
+    take: 200
+  });
+}
+
+export async function createTicketNote(input: {
+  companyId: string;
+  ticketId: string;
+  authorMembershipId: string;
+  role: WappRole;
+  body: string;
+}) {
+  const ticket = await getTicket(
+    input.companyId,
+    input.ticketId
+  );
+
+  assertCanOperateTicket(
+    ticket.assignedMembershipId,
+    input.authorMembershipId,
+    input.role
+  );
+
+  const membership =
+    await validateMembership(
+      input.companyId,
+      input.authorMembershipId
+    );
+
+  const note = await prisma.ticketNote.create({
+    data: {
+      companyId: input.companyId,
+      ticketId: input.ticketId,
+      authorMembershipId: membership.id,
+      body: input.body.trim()
+    },
+    include: {
+      authorMembership: {
+        select: {
+          id: true,
+          role: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  publishRealtime(input.companyId, {
+    type: "note.created",
+    ticketId: input.ticketId,
+    noteId: note.id
+  });
+
+  return note;
+}
+
+
+export async function replaceTicketTags(input: {
+  companyId: string;
+  ticketId: string;
+  actorMembershipId: string;
+  role: WappRole;
+  tagIds: string[];
+}) {
+  const ticket = await getTicket(
+    input.companyId,
+    input.ticketId
+  );
+
+  assertCanOperateTicket(
+    ticket.assignedMembershipId,
+    input.actorMembershipId,
+    input.role
+  );
+
+  const uniqueTagIds =
+    [...new Set(input.tagIds)];
+
+  if (uniqueTagIds.length > 20) {
+    throw new AppError(
+      "Um atendimento pode ter no máximo 20 etiquetas.",
+      422,
+      "TOO_MANY_TICKET_TAGS"
+    );
+  }
+
+  if (uniqueTagIds.length > 0) {
+    const validCount =
+      await prisma.tag.count({
+        where: {
+          companyId:
+            input.companyId,
+          id: {
+            in: uniqueTagIds
+          },
+          isActive: true
+        }
+      });
+
+    if (
+      validCount !==
+      uniqueTagIds.length
+    ) {
+      throw new AppError(
+        "Uma ou mais etiquetas são inválidas ou estão inativas.",
+        422,
+        "INVALID_TICKET_TAG"
+      );
+    }
+  }
+
+  await prisma.$transaction(async tx => {
+    await tx.ticketTag.deleteMany({
+      where: {
+        ticketId:
+          ticket.id
+      }
+    });
+
+    if (uniqueTagIds.length > 0) {
+      await tx.ticketTag.createMany({
+        data:
+          uniqueTagIds.map(tagId => ({
+            ticketId:
+              ticket.id,
+            tagId,
+            createdByMembershipId:
+              input.actorMembershipId
+          })),
+        skipDuplicates: true
+      });
+    }
+  });
+
+  const updated =
+    await prisma.ticket.findFirst({
+      where: {
+        id: ticket.id,
+        companyId:
+          input.companyId
+      },
+      include: ticketInclude
+    });
+
+  if (updated) {
+    await recordTicketEvent({
+      companyId:
+        input.companyId,
+      ticketId:
+        ticket.id,
+      actorMembershipId:
+        input.actorMembershipId,
+      type: "TAGS_UPDATED",
+      metadata: {
+        tagIds:
+          updated.tags.map(
+            link =>
+              link.tag.id
+          ),
+        tagNames:
+          updated.tags.map(
+            link =>
+              link.tag.name
+          )
+      }
+    });
+  }
+
+  publishRealtime(
+    input.companyId,
+    {
+      type: "ticket.updated",
+      ticketId:
+        ticket.id
+    }
+  );
+
+  return updated;
 }

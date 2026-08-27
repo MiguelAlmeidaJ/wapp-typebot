@@ -3,6 +3,10 @@ import { z } from "zod";
 
 import { env } from "../../config/env.js";
 import { AppError } from "../../errors/app-error.js";
+import {
+  enforceRateLimit,
+  normalizeIdentity
+} from "../../security/rate-limit.js";
 import { requireAuth } from "./auth.guard.js";
 import {
   login,
@@ -43,6 +47,41 @@ export async function authRoutes(app: FastifyInstance) {
   app.post("/api/v1/auth/login", async (request, reply) => {
     const input = loginSchema.parse(request.body);
 
+    await enforceRateLimit(
+      request,
+      reply,
+      {
+        scope:
+          "auth:login:ip",
+        key:
+          request.ip,
+        max:
+          12,
+        windowMs:
+          15 * 60 * 1000
+      }
+    );
+
+    await enforceRateLimit(
+      request,
+      reply,
+      {
+        scope:
+          "auth:login:identity",
+        key:
+          `${normalizeIdentity(
+            input.email
+          )}|${normalizeIdentity(
+            input.companySlug ??
+              ""
+          )}`,
+        max:
+          20,
+        windowMs:
+          15 * 60 * 1000
+      }
+    );
+
     const result = await login({
       ...input,
       ipAddress: request.ip,
@@ -60,6 +99,21 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/v1/auth/refresh", async (request, reply) => {
+    await enforceRateLimit(
+      request,
+      reply,
+      {
+        scope:
+          "auth:refresh:ip",
+        key:
+          request.ip,
+        max:
+          60,
+        windowMs:
+          60 * 1000
+      }
+    );
+
     const token = request.cookies[REFRESH_COOKIE];
 
     if (!token) {

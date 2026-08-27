@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type { FastifyInstance } from "fastify";
 
 import { env } from "../../config/env.js";
@@ -7,6 +9,7 @@ import {
   listOnlineMembershipIds,
   markPresenceOffline,
   markPresenceOnline,
+  refreshPresence,
   subscribeRealtime,
   type RealtimeEvent
 } from "./realtime.bus.js";
@@ -16,7 +19,7 @@ export async function realtimeRoutes(app: FastifyInstance) {
     const auth = await requireAuth(request);
 
     return {
-      membershipIds: listOnlineMembershipIds(auth.companyId)
+      membershipIds: await listOnlineMembershipIds(auth.companyId)
     };
   });
 
@@ -39,8 +42,14 @@ export async function realtimeRoutes(app: FastifyInstance) {
       reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
     };
 
+    const presenceConnectionId = randomUUID();
+
     const unsubscribe = subscribeRealtime(auth.companyId, send);
-    markPresenceOnline(auth.companyId, auth.membershipId);
+    await markPresenceOnline(
+      auth.companyId,
+      auth.membershipId,
+      presenceConnectionId
+    );
 
     reply.raw.write(
       `data: ${JSON.stringify({
@@ -51,6 +60,12 @@ export async function realtimeRoutes(app: FastifyInstance) {
     );
 
     const heartbeat = setInterval(() => {
+      void refreshPresence(
+        auth.companyId,
+        auth.membershipId,
+        presenceConnectionId
+      );
+
       reply.raw.write(": heartbeat\n\n");
     }, 25_000);
 
@@ -61,7 +76,11 @@ export async function realtimeRoutes(app: FastifyInstance) {
       closed = true;
       clearInterval(heartbeat);
       unsubscribe();
-      markPresenceOffline(auth.companyId, auth.membershipId);
+      void markPresenceOffline(
+        auth.companyId,
+        auth.membershipId,
+        presenceConnectionId
+      );
     };
 
     reply.raw.once("close", cleanup);

@@ -7,6 +7,7 @@ import { env } from "../../config/env.js";
 import { AppError } from "../../errors/app-error.js";
 import { prisma } from "../../lib/database.js";
 import { ingestEvolutionMessage } from "../messages/message-ingestion.service.js";
+import { ingestEvolutionMessageUpdate } from "../messages/message-status.service.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
 
 const paramsSchema = z.object({
@@ -190,6 +191,22 @@ export async function evolutionWebhookRoutes(
             result
           },
           "Evolution message processed"
+        );
+      } else if (event === "MESSAGES_UPDATE") {
+        const result =
+          await ingestEvolutionMessageUpdate(
+            body,
+            connection
+          );
+
+        request.log.info(
+          {
+            companyId: connection.companyId,
+            connectionId: connection.id,
+            instance,
+            result
+          },
+          "Evolution message status processed"
         );
       } else {
         await prisma.whatsAppConnection.update({

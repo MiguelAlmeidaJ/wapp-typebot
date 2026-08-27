@@ -2,6 +2,7 @@ import type { WhatsAppConnection } from "../../generated/prisma/client.js";
 import { prisma } from "../../lib/database.js";
 import { toPrismaJson } from "../../lib/prisma-json.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
+import { recordTicketEvent } from "../tickets/ticket-event.service.js";
 import { scheduleMessageMediaCapture } from "../media/media-capture.service.js";
 import {
   parseEvolutionMessage,
@@ -121,7 +122,20 @@ export async function ingestEvolutionMessage(
       queueId: connection.defaultQueueId,
       activeKey: key,
       status: parsed.fromMe ? "OPEN" : "PENDING",
-      lastMessageAt: parsed.timestamp
+      lastMessageAt: parsed.timestamp,
+      ...(parsed.fromMe
+        ? {
+            lastOutboundAt:
+              parsed.timestamp
+          }
+        : {
+            firstInboundAt:
+              parsed.timestamp,
+            lastInboundAt:
+              parsed.timestamp,
+            waitingSince:
+              parsed.timestamp
+          })
     }
   });
 
@@ -161,8 +175,27 @@ export async function ingestEvolutionMessage(
       lastMessage: preview(parsed),
       lastMessageAt: parsed.timestamp,
       ...(parsed.fromMe
-        ? {}
+        ? {
+            lastOutboundAt:
+              parsed.timestamp,
+            waitingSince:
+              null,
+            ...(ticket.firstInboundAt &&
+            !ticket.firstResponseAt
+              ? {
+                  firstResponseAt:
+                    parsed.timestamp
+                }
+              : {})
+          }
         : {
+            firstInboundAt:
+              ticket.firstInboundAt ??
+              parsed.timestamp,
+            lastInboundAt:
+              parsed.timestamp,
+            waitingSince:
+              parsed.timestamp,
             unreadCount: {
               increment: 1
             }
@@ -171,6 +204,21 @@ export async function ingestEvolutionMessage(
   });
 
   if (!before) {
+    await recordTicketEvent({
+      companyId:
+        connection.companyId,
+      ticketId:
+        ticket.id,
+      type: "CREATED",
+      metadata: {
+        source: "WHATSAPP",
+        initialDirection:
+          parsed.fromMe
+            ? "OUTBOUND"
+            : "INBOUND"
+      }
+    });
+
     publishRealtime(connection.companyId, {
       type: "ticket.created",
       ticketId: ticket.id

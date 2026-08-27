@@ -2,6 +2,7 @@ import { env } from "../../config/env.js";
 import { AppError } from "../../errors/app-error.js";
 import type {
   CreateWhatsAppInstanceInput,
+  ConfigureWebhookInput,
   DownloadMediaInput,
   DownloadMediaResult,
   SendMediaInput,
@@ -161,6 +162,7 @@ export class EvolutionWhatsAppClient
               events: [
                 "QRCODE_UPDATED",
                 "MESSAGES_UPSERT",
+                "MESSAGES_UPDATE",
                 "CONNECTION_UPDATE"
               ]
             }
@@ -211,6 +213,27 @@ export class EvolutionWhatsAppClient
         response.instance?.state ??
         "unknown"
     };
+  }
+
+  async configureWebhook(
+    input: ConfigureWebhookInput
+  ): Promise<unknown> {
+    return this.request(
+      `/webhook/set/${encodeURIComponent(
+        input.instanceName
+      )}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          enabled: true,
+          url: input.webhookUrl,
+          webhookByEvents: false,
+          webhookBase64: false,
+          base64: false,
+          events: input.events
+        })
+      }
+    );
   }
 
   async sendText(

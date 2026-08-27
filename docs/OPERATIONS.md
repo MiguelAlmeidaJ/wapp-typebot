@@ -58,3 +58,13 @@ The same SSE connection also maintains an in-memory online/offline presence coun
 This in-memory bus is correct for the current single API process. Before running
 multiple API replicas, the bus should be moved to Redis Pub/Sub so every replica
 sees the same events.
+
+## P1.14 distributed realtime
+
+The original P0.7 EventEmitter transport was intentionally limited to one API
+process.
+
+P1.14 keeps the same SSE contract but distributes company events and operator
+presence through Redis Pub/Sub / Redis presence state.
+
+See `docs/REDIS_REALTIME.md`.

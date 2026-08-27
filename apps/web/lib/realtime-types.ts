@@ -2,6 +2,11 @@ export type RealtimeEventType =
   | "realtime.ready"
   | "message.created"
   | "message.updated"
+  | "note.created"
+  | "quick-reply.updated"
+  | "tag.updated"
+  | "sla.updated"
+  | "ticket.event.created"
   | "ticket.updated"
   | "ticket.created"
   | "queue.updated"
@@ -14,6 +19,10 @@ export interface RealtimeEvent {
   occurredAt: string;
   ticketId?: string;
   messageId?: string;
+  noteId?: string;
+  quickReplyId?: string;
+  tagId?: string;
+  eventId?: string;
   queueId?: string;
   connectionId?: string;
   membershipId?: string;

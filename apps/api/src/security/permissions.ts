@@ -4,6 +4,12 @@ export type WappPermission =
   | "admin.test"
   | "contacts.read"
   | "contacts.manage"
+  | "quickReplies.read"
+  | "quickReplies.manage"
+  | "tags.read"
+  | "tags.manage"
+  | "sla.read"
+  | "sla.manage"
   | "team.read"
   | "team.manage"
   | "queues.read"
@@ -20,6 +26,12 @@ const permissionsByRole: Record<
     "admin.test",
     "contacts.read",
     "contacts.manage",
+    "quickReplies.read",
+    "quickReplies.manage",
+    "tags.read",
+    "tags.manage",
+    "sla.read",
+    "sla.manage",
     "team.read",
     "team.manage",
     "queues.read",
@@ -32,6 +44,12 @@ const permissionsByRole: Record<
     "admin.test",
     "contacts.read",
     "contacts.manage",
+    "quickReplies.read",
+    "quickReplies.manage",
+    "tags.read",
+    "tags.manage",
+    "sla.read",
+    "sla.manage",
     "team.read",
     "team.manage",
     "queues.read",
@@ -43,6 +61,12 @@ const permissionsByRole: Record<
   SUPERVISOR: [
     "contacts.read",
     "contacts.manage",
+    "quickReplies.read",
+    "quickReplies.manage",
+    "tags.read",
+    "tags.manage",
+    "sla.read",
+    "sla.manage",
     "team.read",
     "queues.read",
     "whatsapp.read",
@@ -51,6 +75,9 @@ const permissionsByRole: Record<
   AGENT: [
     "contacts.read",
     "contacts.manage",
+    "quickReplies.read",
+    "tags.read",
+    "sla.read",
     "team.read",
     "queues.read",
     "whatsapp.read"

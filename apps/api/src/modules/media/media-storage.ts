@@ -1,74 +1,96 @@
-import {
-  mkdir,
-  readFile,
-  stat,
-  writeFile
-} from "node:fs/promises";
-import {
-  extname,
-  resolve,
-  sep
-} from "node:path";
+import { extname } from "node:path";
 
 import { env } from "../../config/env.js";
 import { AppError } from "../../errors/app-error.js";
+import {
+  getMediaStorage,
+  getMediaStorageMode
+} from "./storage/media-storage.driver.js";
 
-const root = resolve(
-  process.cwd(),
-  env.MEDIA_STORAGE_PATH
-);
-
-const mimeExtensions: Record<string, string> = {
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/webp": ".webp",
-  "image/gif": ".gif",
-  "audio/ogg": ".ogg",
-  "audio/mpeg": ".mp3",
-  "audio/mp4": ".m4a",
-  "video/mp4": ".mp4",
-  "video/webm": ".webm",
-  "application/pdf": ".pdf",
-  "text/plain": ".txt",
-  "application/zip": ".zip",
-  "application/octet-stream": ".bin"
-};
+const mimeExtensions:
+  Record<
+    string,
+    string
+  > = {
+    "image/jpeg":
+      ".jpg",
+    "image/png":
+      ".png",
+    "image/webp":
+      ".webp",
+    "image/gif":
+      ".gif",
+    "audio/ogg":
+      ".ogg",
+    "audio/mpeg":
+      ".mp3",
+    "audio/mp4":
+      ".m4a",
+    "audio/webm":
+      ".webm",
+    "video/mp4":
+      ".mp4",
+    "video/webm":
+      ".webm",
+    "application/pdf":
+      ".pdf",
+    "text/plain":
+      ".txt",
+    "application/zip":
+      ".zip",
+    "application/octet-stream":
+      ".bin"
+  };
 
 function safeExtension(
   fileName?: string,
   mimetype?: string
 ) {
-  const fromName = fileName
-    ? extname(fileName).toLowerCase()
-    : "";
+  const fromName =
+    fileName
+      ? extname(
+          fileName
+        ).toLowerCase()
+      : "";
 
   if (
     fromName &&
-    /^\.[a-z0-9]{1,8}$/.test(fromName)
+    /^\.[a-z0-9]{1,8}$/.test(
+      fromName
+    )
   ) {
     return fromName;
   }
 
-  const normalizedMime = mimetype
-    ?.split(";")[0]
-    ?.trim()
-    .toLowerCase();
+  const normalizedMime =
+    mimetype
+      ?.split(";")[0]
+      ?.trim()
+      .toLowerCase();
 
   return (
-    (normalizedMime
-      ? mimeExtensions[normalizedMime]
-      : undefined) ?? ".bin"
+    (
+      normalizedMime
+        ? mimeExtensions[
+            normalizedMime
+          ]
+        : undefined
+    ) ??
+    ".bin"
   );
 }
 
-function resolveStorageKey(
+function validateStorageKey(
   storageKey: string
 ) {
-  const absolute = resolve(root, storageKey);
-
   if (
-    absolute !== root &&
-    !absolute.startsWith(`${root}${sep}`)
+    !storageKey ||
+    storageKey.startsWith("/") ||
+    storageKey.includes("\\") ||
+    storageKey.includes("..") ||
+    !/^[a-zA-Z0-9._/-]+$/.test(
+      storageKey
+    )
   ) {
     throw new AppError(
       "Chave de mídia inválida.",
@@ -77,7 +99,7 @@ function resolveStorageKey(
     );
   }
 
-  return absolute;
+  return storageKey;
 }
 
 export async function storeMedia(input: {
@@ -87,7 +109,10 @@ export async function storeMedia(input: {
   mimetype?: string;
   fileName?: string;
 }) {
-  if (input.buffer.byteLength > env.MEDIA_MAX_BYTES) {
+  if (
+    input.buffer.byteLength >
+    env.MEDIA_MAX_BYTES
+  ) {
     throw new AppError(
       `A mídia excede o limite de ${env.MEDIA_MAX_BYTES} bytes.`,
       413,
@@ -95,49 +120,60 @@ export async function storeMedia(input: {
     );
   }
 
-  const extension = safeExtension(
-    input.fileName,
-    input.mimetype
-  );
+  const extension =
+    safeExtension(
+      input.fileName,
+      input.mimetype
+    );
 
   const storageKey =
-    `${input.companyId}/${input.messageId}${extension}`;
+    validateStorageKey(
+      `${input.companyId}/${input.messageId}${extension}`
+    );
 
-  const absolutePath =
-    resolveStorageKey(storageKey);
-
-  await mkdir(
-    resolve(root, input.companyId),
-    {
-      recursive: true
-    }
-  );
-
-  await writeFile(
-    absolutePath,
-    input.buffer
-  );
+  await getMediaStorage()
+    .put({
+      storageKey,
+      buffer:
+        input.buffer,
+      contentType:
+        input.mimetype
+    });
 
   return {
     storageKey,
-    size: input.buffer.byteLength
+    size:
+      input.buffer.byteLength
   };
 }
 
 export async function readMedia(
   storageKey: string
 ) {
-  const absolutePath =
-    resolveStorageKey(storageKey);
-
-  const [buffer, info] =
-    await Promise.all([
-      readFile(absolutePath),
-      stat(absolutePath)
-    ]);
-
-  return {
-    buffer,
-    size: info.size
-  };
+  return getMediaStorage()
+    .read(
+      validateStorageKey(
+        storageKey
+      )
+    );
 }
+
+export async function mediaExists(
+  storageKey: string
+) {
+  return getMediaStorage()
+    .exists(
+      validateStorageKey(
+        storageKey
+      )
+    );
+}
+
+export async function checkMediaStorageHealth() {
+  return getMediaStorage()
+    .healthCheck();
+}
+
+export {
+  getMediaStorageMode
+};

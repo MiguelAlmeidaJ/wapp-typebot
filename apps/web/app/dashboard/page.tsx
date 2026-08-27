@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/auth-provider";
 import { WappMark } from "@/components/wapp-mark";
+import { OperationalDashboard } from "@/components/dashboard/operational-dashboard";
 import { ApiError } from "@/lib/api";
 import {
   roleCan,
@@ -249,37 +250,7 @@ export default function DashboardPage() {
             </span>
           </div>
 
-          <div className="metric-grid">
-            <article className="metric-card">
-              <span className="metric-card__label">
-                Conversas
-              </span>
-              <strong>—</strong>
-              <small>
-                Acompanhe em Conversas
-              </small>
-            </article>
-
-            <article className="metric-card">
-              <span className="metric-card__label">
-                Filas
-              </span>
-              <strong>—</strong>
-              <small>
-                Distribuição operacional
-              </small>
-            </article>
-
-            <article className="metric-card">
-              <span className="metric-card__label">
-                Conexões
-              </span>
-              <strong>—</strong>
-              <small>
-                WhatsApp conectado ao Wapp
-              </small>
-            </article>
-          </div>
+          <OperationalDashboard />
 
           <div
             className={

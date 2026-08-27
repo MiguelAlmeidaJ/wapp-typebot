@@ -28,6 +28,23 @@ function webhookUrl() {
   return `${env.EVOLUTION_WEBHOOK_BASE_URL}/api/v1/webhooks/evolution/${env.EVOLUTION_WEBHOOK_SECRET}`;
 }
 
+const WAPP_WEBHOOK_EVENTS = [
+  "QRCODE_UPDATED",
+  "MESSAGES_UPSERT",
+  "MESSAGES_UPDATE",
+  "CONNECTION_UPDATE"
+];
+
+async function ensureWebhook(
+  instanceName: string
+) {
+  await evolutionWhatsAppClient.configureWebhook({
+    instanceName,
+    webhookUrl: webhookUrl(),
+    events: WAPP_WEBHOOK_EVENTS
+  });
+}
+
 function mapEvolutionState(
   state: string
 ): "CREATED" | "CONNECTING" | "CONNECTED" | "DISCONNECTED" | "ERROR" {
@@ -216,6 +233,10 @@ export async function connectConnection(
     connectionId
   );
 
+  await ensureWebhook(
+    connection.instanceName
+  );
+
   const qr = await evolutionWhatsAppClient.connect(
     connection.instanceName
   );
@@ -246,6 +267,10 @@ export async function syncConnection(
   );
 
   try {
+    await ensureWebhook(
+      connection.instanceName
+    );
+
     const state = await evolutionWhatsAppClient.connectionState(
       connection.instanceName
     );
