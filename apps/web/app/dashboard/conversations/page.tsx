@@ -9,6 +9,7 @@ import {
   useState
 } from "react";
 import { useRouter } from "next/navigation";
+import fixWebmDuration from "fix-webm-duration";
 
 import { useAuth } from "@/components/auth-provider";
 import { MessageMedia } from "@/components/messages/message-media";
@@ -180,6 +181,58 @@ function timeLabel(value: string) {
   }).format(new Date(value));
 }
 
+function recordingTimeLabel(
+  seconds: number
+) {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(
+    remainder
+  ).padStart(2, "0")}`;
+}
+
+function preferredRecordingMimeType() {
+  if (
+    typeof MediaRecorder === "undefined"
+  ) {
+    return "";
+  }
+
+  const candidates = [
+    "audio/ogg;codecs=opus",
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4"
+  ];
+
+  return (
+    candidates.find(candidate =>
+      MediaRecorder.isTypeSupported(candidate)
+    ) ?? ""
+  );
+}
+
+function recordingExtension(
+  mimeType: string
+) {
+  const normalized =
+    mimeType
+      .split(";")[0]
+      ?.trim()
+      .toLowerCase() ?? "";
+
+  if (normalized === "audio/ogg") {
+    return "ogg";
+  }
+
+  if (normalized === "audio/mp4") {
+    return "m4a";
+  }
+
+  return "webm";
+}
+
 function dateTimeLabel(value: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
@@ -199,6 +252,16 @@ export default function ConversationsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
+  const [attachment, setAttachment] =
+    useState<File | null>(null);
+  const [attachmentPreviewUrl, setAttachmentPreviewUrl] =
+    useState<string | null>(null);
+  const [attachmentIsVoiceNote, setAttachmentIsVoiceNote] =
+    useState(false);
+  const [recording, setRecording] =
+    useState(false);
+  const [recordingSeconds, setRecordingSeconds] =
+    useState(0);
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -208,6 +271,20 @@ export default function ConversationsPage() {
   const [error, setError] = useState("");
   const [onlineMembershipIds, setOnlineMembershipIds] = useState<string[]>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const attachmentInputRef =
+    useRef<HTMLInputElement | null>(null);
+  const mediaRecorderRef =
+    useRef<MediaRecorder | null>(null);
+  const mediaStreamRef =
+    useRef<MediaStream | null>(null);
+  const audioChunksRef =
+    useRef<Blob[]>([]);
+  const recordingTimerRef =
+    useRef<number | null>(null);
+  const recordingStartedAtRef =
+    useRef<number | null>(null);
+  const discardRecordingRef =
+    useRef(false);
 
   const selectedTicket = useMemo(
     () => tickets.find(ticket => ticket.id === selectedId) ?? null,
@@ -343,6 +420,31 @@ export default function ConversationsPage() {
     });
   }, [messages]);
 
+  // [P1.3 attachment preview]
+  useEffect(() => {
+    if (!attachment) {
+      setAttachmentPreviewUrl(null);
+      return;
+    }
+
+    if (
+      !attachment.type.startsWith("image/") &&
+      !attachment.type.startsWith("audio/")
+    ) {
+      setAttachmentPreviewUrl(null);
+      return;
+    }
+
+    const url =
+      URL.createObjectURL(attachment);
+
+    setAttachmentPreviewUrl(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [attachment]);
+
   // [P1.2f pending media fallback]
   // SSE remains primary. This polls only while media is still processing.
   useEffect(() => {
@@ -390,6 +492,34 @@ export default function ConversationsPage() {
     session
   ]);
 
+
+  // [P1.4 recorder cleanup]
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current !== null) {
+        window.clearInterval(
+          recordingTimerRef.current
+        );
+      }
+
+      const recorder =
+        mediaRecorderRef.current;
+
+      if (
+        recorder &&
+        recorder.state !== "inactive"
+      ) {
+        recorder.ondataavailable = null;
+        recorder.onstop = null;
+        recorder.stop();
+      }
+
+      mediaStreamRef.current
+        ?.getTracks()
+        .forEach(track => track.stop());
+    };
+  }, []);
+
   async function handleClaim() {
     if (!selectedId) return;
     setClaiming(true);
@@ -436,25 +566,363 @@ export default function ConversationsPage() {
     }
   }
 
-  async function handleSend(event: FormEvent<HTMLFormElement>) {
+  function stopRecordingResources() {
+    if (recordingTimerRef.current !== null) {
+      window.clearInterval(
+        recordingTimerRef.current
+      );
+      recordingTimerRef.current = null;
+    }
+
+    recordingStartedAtRef.current = null;
+
+    mediaStreamRef.current
+      ?.getTracks()
+      .forEach(track => track.stop());
+
+    mediaStreamRef.current = null;
+  }
+
+  async function startRecording() {
+    if (sending || attachment || recording) {
+      return;
+    }
+
+    if (text.trim()) {
+      setError(
+        "Envie ou apague o texto antes de gravar uma mensagem de voz."
+      );
+      return;
+    }
+
+    if (
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      setError(
+        "Este navegador não oferece suporte à gravação de áudio."
+      );
+      return;
+    }
+
+    setError("");
+    discardRecordingRef.current = false;
+
+    try {
+      const stream =
+        await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+
+      mediaStreamRef.current = stream;
+
+      const mimeType =
+        preferredRecordingMimeType();
+
+      const recorder = mimeType
+        ? new MediaRecorder(stream, {
+            mimeType
+          })
+        : new MediaRecorder(stream);
+
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = event => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(
+            event.data
+          );
+        }
+      };
+
+      recorder.onerror = () => {
+        setError(
+          "A gravação de áudio foi interrompida pelo navegador."
+        );
+      };
+
+      recorder.onstop = async () => {
+        const startedAt =
+          recordingStartedAtRef.current;
+
+        const durationMs = startedAt
+          ? Math.max(
+              1,
+              Date.now() - startedAt
+            )
+          : 1;
+
+        stopRecordingResources();
+        setRecording(false);
+        setRecordingSeconds(0);
+
+        if (discardRecordingRef.current) {
+          audioChunksRef.current = [];
+          discardRecordingRef.current = false;
+          return;
+        }
+
+        const finalMimeType =
+          recorder.mimeType ||
+          mimeType ||
+          "audio/webm";
+
+        let blob = new Blob(
+          audioChunksRef.current,
+          {
+            type: finalMimeType
+          }
+        );
+
+        audioChunksRef.current = [];
+
+        if (blob.size === 0) {
+          setError(
+            "O navegador não gerou conteúdo para esta gravação."
+          );
+          return;
+        }
+
+        // [P1.4b WebM duration metadata]
+        // Chromium can produce MediaRecorder WebM blobs without Duration.
+        // Repair it before preview/upload so the player knows the real length.
+        if (
+          finalMimeType
+            .toLowerCase()
+            .startsWith("audio/webm")
+        ) {
+          try {
+            blob = await fixWebmDuration(
+              blob,
+              durationMs,
+              {
+                logger: false
+              }
+            );
+          } catch {
+            // Keep the original recording if metadata repair fails.
+            // Sending audio must not depend on the preview-only correction.
+          }
+        }
+
+        const extension =
+          recordingExtension(
+            finalMimeType
+          );
+
+        const stamp = new Date()
+          .toISOString()
+          .replace(/[:.]/g, "-");
+
+        const file = new File(
+          [blob],
+          `audio-wapp-${stamp}.${extension}`,
+          {
+            type: finalMimeType
+          }
+        );
+
+        const maxBytes =
+          25 * 1024 * 1024;
+
+        if (file.size > maxBytes) {
+          setError(
+            "A gravação excedeu o limite de 25 MB."
+          );
+          return;
+        }
+
+        setAttachmentIsVoiceNote(true);
+        setAttachment(file);
+      };
+
+      recorder.start(250);
+
+      recordingStartedAtRef.current =
+        Date.now();
+
+      setRecordingSeconds(0);
+      setRecording(true);
+
+      recordingTimerRef.current =
+        window.setInterval(() => {
+          const startedAt =
+            recordingStartedAtRef.current;
+
+          if (!startedAt) {
+            return;
+          }
+
+          setRecordingSeconds(
+            Math.floor(
+              (Date.now() - startedAt) /
+                1000
+            )
+          );
+        }, 250);
+    } catch (caught) {
+      stopRecordingResources();
+
+      if (
+        caught instanceof DOMException &&
+        (caught.name === "NotAllowedError" ||
+          caught.name ===
+            "PermissionDeniedError")
+      ) {
+        setError(
+          "Permita o acesso ao microfone para gravar áudio."
+        );
+        return;
+      }
+
+      setError(
+        "Não foi possível iniciar o microfone."
+      );
+    }
+  }
+
+  function stopRecording() {
+    const recorder =
+      mediaRecorderRef.current;
+
+    if (
+      !recorder ||
+      recorder.state === "inactive"
+    ) {
+      return;
+    }
+
+    recorder.stop();
+  }
+
+  function cancelRecording() {
+    discardRecordingRef.current = true;
+
+    const recorder =
+      mediaRecorderRef.current;
+
+    if (
+      recorder &&
+      recorder.state !== "inactive"
+    ) {
+      recorder.stop();
+      return;
+    }
+
+    stopRecordingResources();
+    setRecording(false);
+    setRecordingSeconds(0);
+  }
+
+  function chooseAttachment(
+    file: File | undefined
+  ) {
+    if (!file) {
+      return;
+    }
+
+    const maxBytes =
+      25 * 1024 * 1024;
+
+    if (file.size > maxBytes) {
+      setError(
+        "O arquivo excede o limite de 25 MB."
+      );
+      return;
+    }
+
+    setError("");
+    setAttachmentIsVoiceNote(false);
+    setAttachment(file);
+  }
+
+  async function handleSend(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
-    if (!selectedId || !text.trim()) return;
+
+    if (
+      !selectedId ||
+      recording ||
+      (!text.trim() && !attachment)
+    ) {
+      return;
+    }
 
     setSending(true);
     setError("");
 
     try {
-      await request(`/api/v1/tickets/${selectedId}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ text: text.trim() })
-      });
+      if (attachment) {
+        const form = new FormData();
+
+        // Put value fields before the file so Fastify multipart
+        // has them available while consuming the upload.
+        form.append(
+          "caption",
+          attachmentIsVoiceNote
+            ? ""
+            : text.trim()
+        );
+        form.append(
+          "voiceNote",
+          attachmentIsVoiceNote
+            ? "true"
+            : "false"
+        );
+        form.append(
+          "file",
+          attachment,
+          attachment.name
+        );
+
+        await request(
+          `/api/v1/tickets/${selectedId}/media`,
+          {
+            method: "POST",
+            body: form
+          }
+        );
+
+        setAttachment(null);
+        setAttachmentIsVoiceNote(false);
+
+        if (
+          attachmentInputRef.current
+        ) {
+          attachmentInputRef.current.value =
+            "";
+        }
+      } else {
+        await request(
+          `/api/v1/tickets/${selectedId}/messages`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              text: text.trim()
+            })
+          }
+        );
+      }
+
       setText("");
-      await Promise.all([loadMessages(selectedId), loadTickets()]);
+
+      await Promise.all([
+        loadMessages(selectedId),
+        loadTickets()
+      ]);
     } catch (caught) {
       setError(
         caught instanceof ApiError
           ? caught.message
-          : "Não foi possível enviar a mensagem."
+          : attachment
+            ? "Não foi possível enviar o anexo."
+            : "Não foi possível enviar a mensagem."
       );
     } finally {
       setSending(false);
@@ -747,8 +1215,150 @@ export default function ConversationsPage() {
                 <div ref={bottomRef} />
                               </div>
 
-                <form className="conversation-composer" onSubmit={handleSend}>
-                <textarea
+                <form
+                  className="conversation-composer conversation-composer--attachments conversation-composer--voice"
+                  onSubmit={handleSend}
+                >
+                  <input
+                    accept="image/jpeg,image/png,image/webp,image/gif,audio/ogg,audio/mpeg,audio/mp4,audio/webm,audio/wav,video/mp4,video/webm,application/pdf,text/plain,application/zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                    className="composer-file-input"
+                    onChange={event =>
+                      chooseAttachment(
+                        event.target.files?.[0]
+                      )
+                    }
+                    ref={attachmentInputRef}
+                    type="file"
+                  />
+
+                  {attachment && (
+                    <div className="composer-attachment-preview">
+                      {attachmentPreviewUrl &&
+                      attachment.type.startsWith("image/") ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          alt="Prévia do anexo"
+                          src={attachmentPreviewUrl}
+                        />
+                      ) : (
+                        <div className="composer-attachment-preview__icon">
+                          {attachment.type.startsWith("audio/")
+                            ? "ÁUDIO"
+                            : "ARQ"}
+                        </div>
+                      )}
+
+                      <div className="composer-attachment-preview__copy">
+                        <strong>
+                          {attachmentIsVoiceNote
+                            ? "Mensagem de voz"
+                            : attachment.name}
+                        </strong>
+                        <span>
+                          {(attachment.size / 1024 / 1024).toFixed(2)} MB
+                          {" · "}
+                          {attachment.type || "arquivo"}
+                        </span>
+                      </div>
+
+                      {attachmentPreviewUrl &&
+                        attachment.type.startsWith("audio/") && (
+                          <audio
+                            className="composer-attachment-preview__audio"
+                            controls
+                            preload="metadata"
+                            src={attachmentPreviewUrl}
+                          />
+                        )}
+
+                      <button
+                        aria-label="Remover anexo"
+                        className="composer-attachment-preview__remove"
+                        disabled={sending}
+                        onClick={() => {
+                          setAttachment(null);
+                          setAttachmentIsVoiceNote(false);
+
+                          if (
+                            attachmentInputRef.current
+                          ) {
+                            attachmentInputRef.current.value =
+                              "";
+                          }
+                        }}
+                        type="button"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+
+                  {recording && (
+                    <div className="composer-recording">
+                      <span
+                        className="composer-recording__dot"
+                        aria-hidden="true"
+                      />
+                      <strong>Gravando áudio</strong>
+                      <time>
+                        {recordingTimeLabel(
+                          recordingSeconds
+                        )}
+                      </time>
+                      <button
+                        className="composer-recording__cancel"
+                        onClick={cancelRecording}
+                        type="button"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    aria-label="Anexar arquivo"
+                    className="composer__attach"
+                    disabled={sending || recording}
+                    onClick={() =>
+                      attachmentInputRef.current?.click()
+                    }
+                    type="button"
+                  >
+                    +
+                  </button>
+
+                  <button
+                    aria-label={
+                      recording
+                        ? "Parar gravação"
+                        : "Gravar áudio"
+                    }
+                    className={
+                      recording
+                        ? "composer__record composer__record--active"
+                        : "composer__record"
+                    }
+                    disabled={
+                      sending ||
+                      (!!attachment && !recording)
+                    }
+                    onClick={() => {
+                      if (recording) {
+                        stopRecording();
+                      } else {
+                        void startRecording();
+                      }
+                    }}
+                    type="button"
+                  >
+                    {recording ? "■" : "●"}
+                  </button>
+
+                  <textarea
+                  disabled={
+                    recording ||
+                    attachmentIsVoiceNote
+                  }
                   maxLength={4096}
                   onChange={event => setText(event.target.value)}
                   onKeyDown={event => {
@@ -763,7 +1373,11 @@ export default function ConversationsPage() {
                 />
                 <button
                   className="composer__send"
-                  disabled={sending || !text.trim()}
+                  disabled={
+                    sending ||
+                    recording ||
+                    (!text.trim() && !attachment)
+                  }
                   type="submit"
                 >
                   {sending ? "…" : "→"}

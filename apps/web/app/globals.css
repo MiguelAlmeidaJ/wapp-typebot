@@ -2942,3 +2942,277 @@ button:disabled {
     padding: 10px 12px !important;
   }
 }
+
+/* --- WAPP P1.3 / Outbound attachments --------------------------------- */
+
+.conversation-composer--attachments {
+  grid-template-columns:
+    42px
+    minmax(0, 1fr)
+    46px !important;
+}
+
+.composer-file-input {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.composer__attach {
+  display: grid;
+  width: 42px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface-subtle);
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 350;
+}
+
+.composer__attach:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: #fff;
+}
+
+.composer__attach:disabled {
+  opacity: 0.4;
+}
+
+.composer-attachment-preview {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns:
+    52px
+    minmax(0, 1fr)
+    32px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-subtle);
+  padding: 8px;
+}
+
+.composer-attachment-preview > img,
+.composer-attachment-preview__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 9px;
+}
+
+.composer-attachment-preview > img {
+  display: block;
+  object-fit: cover;
+}
+
+.composer-attachment-preview__icon {
+  display: grid;
+  place-items: center;
+  background: #e7ece8;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.composer-attachment-preview__copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.composer-attachment-preview__copy strong,
+.composer-attachment-preview__copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-attachment-preview__copy strong {
+  font-size: 10px;
+}
+
+.composer-attachment-preview__copy span {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.composer-attachment-preview__remove {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 20px;
+}
+
+.composer-attachment-preview__remove:hover:not(:disabled) {
+  background: #e3e7e4;
+  color: var(--ink);
+}
+
+@media (max-width: 620px) {
+  .conversation-composer--attachments {
+    grid-template-columns:
+      38px
+      minmax(0, 1fr)
+      44px !important;
+  }
+
+  .composer__attach {
+    width: 38px;
+    height: 44px;
+  }
+}
+
+/* --- WAPP P1.4 / Browser audio recording ------------------------------ */
+
+.conversation-composer--voice {
+  grid-template-columns:
+    42px
+    42px
+    minmax(0, 1fr)
+    46px !important;
+}
+
+.composer__record {
+  display: grid;
+  width: 42px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface-subtle);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.composer__record:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: #fff;
+  color: var(--ink);
+}
+
+.composer__record--active {
+  border-color: #d6aaa7;
+  background: #fff2f0;
+  color: #a63f37;
+}
+
+.composer__record:disabled {
+  opacity: 0.4;
+}
+
+.composer-recording {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns:
+    10px
+    auto
+    1fr
+    auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  border: 1px solid #ead1ce;
+  border-radius: 12px;
+  background: #fff7f5;
+  padding: 9px 11px;
+}
+
+.composer-recording__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #b7473e;
+  animation:
+    wapp-recording-pulse
+    1.15s ease-in-out
+    infinite;
+}
+
+.composer-recording strong {
+  font-size: 10px;
+}
+
+.composer-recording time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+}
+
+.composer-recording__cancel {
+  border: 0;
+  background: transparent;
+  color: #9b4b45;
+  padding: 4px 5px;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+@keyframes wapp-recording-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.35;
+    transform: scale(0.78);
+  }
+}
+
+.composer-attachment-preview__audio {
+  display: block;
+  width: 100%;
+  height: 36px;
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.composer-attachment-preview__remove {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+@media (max-width: 620px) {
+  .conversation-composer--voice {
+    grid-template-columns:
+      38px
+      38px
+      minmax(0, 1fr)
+      44px !important;
+  }
+
+  .composer__record {
+    width: 38px;
+    height: 44px;
+  }
+
+  .composer-recording {
+    grid-template-columns:
+      10px
+      1fr
+      auto;
+  }
+
+  .composer-recording time {
+    justify-self: end;
+  }
+
+  .composer-recording__cancel {
+    grid-column: 2 / -1;
+    justify-self: start;
+    padding-left: 0;
+  }
+}

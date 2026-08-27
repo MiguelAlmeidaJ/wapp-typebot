@@ -16,7 +16,18 @@ function createAdapter() {
     user: decodeURIComponent(databaseUrl.username),
     password: decodeURIComponent(databaseUrl.password),
     database: databaseUrl.pathname.replace(/^\//, ""),
-    connectionLimit: 10
+    connectionLimit: 10,
+
+    /*
+     * MySQL 8.x defaults to caching_sha2_password.
+     * MariaDB Connector/Node does not retrieve the server RSA key unless
+     * explicitly allowed.
+     *
+     * Local development runs without TLS, so allow key retrieval here.
+     * Production must use TLS and/or an explicitly configured server key.
+     */
+    allowPublicKeyRetrieval:
+      env.NODE_ENV !== "production"
   });
 }
 

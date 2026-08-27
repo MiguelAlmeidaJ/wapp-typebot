@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "fix-webm-duration": "1.0.6",
     "next": "16.3.3",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",

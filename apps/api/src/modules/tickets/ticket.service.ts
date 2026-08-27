@@ -7,6 +7,7 @@ import { prisma } from "../../lib/database.js";
 import { toPrismaJson } from "../../lib/prisma-json.js";
 import type { WappRole } from "../../lib/tokens.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
+import { storeMedia } from "../media/media-storage.js";
 
 export type TicketListStatus =
   | "ACTIVE"
@@ -532,4 +533,375 @@ export async function sendTicketText(input: {
   });
 
   return message;
+}
+
+
+const documentMimeTypes = new Set([
+  "application/pdf",
+  "text/plain",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/octet-stream"
+]);
+
+const imageMimeTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif"
+]);
+
+const audioMimeTypes = new Set([
+  "audio/ogg",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/webm",
+  "audio/wav",
+  "audio/x-wav"
+]);
+
+const videoMimeTypes = new Set([
+  "video/mp4",
+  "video/webm"
+]);
+
+function outboundMediaDescriptor(
+  mimetype: string
+): {
+  providerType:
+    | "image"
+    | "video"
+    | "audio"
+    | "document";
+  messageType:
+    | "IMAGE"
+    | "VIDEO"
+    | "AUDIO"
+    | "DOCUMENT";
+  preview: string;
+} {
+  const normalized = mimetype
+    .split(";")[0]
+    ?.trim()
+    .toLowerCase();
+
+  if (
+    normalized &&
+    imageMimeTypes.has(normalized)
+  ) {
+    return {
+      providerType: "image",
+      messageType: "IMAGE",
+      preview: "[Imagem]"
+    };
+  }
+
+  if (
+    normalized &&
+    audioMimeTypes.has(normalized)
+  ) {
+    return {
+      providerType: "audio",
+      messageType: "AUDIO",
+      preview: "[Áudio]"
+    };
+  }
+
+  if (
+    normalized &&
+    videoMimeTypes.has(normalized)
+  ) {
+    return {
+      providerType: "video",
+      messageType: "VIDEO",
+      preview: "[Vídeo]"
+    };
+  }
+
+  if (
+    normalized &&
+    documentMimeTypes.has(normalized)
+  ) {
+    return {
+      providerType: "document",
+      messageType: "DOCUMENT",
+      preview: "[Documento]"
+    };
+  }
+
+  throw new AppError(
+    "Este tipo de arquivo não é suportado para envio.",
+    422,
+    "UNSUPPORTED_MEDIA_TYPE",
+    {
+      mimetype
+    }
+  );
+}
+
+function safeOutboundFileName(
+  value: string
+) {
+  const sanitized = value
+    .replace(/[\\/\0\r\n]/g, "_")
+    .trim()
+    .slice(0, 180);
+
+  return sanitized || "arquivo";
+}
+
+export async function sendTicketMedia(input: {
+  companyId: string;
+  ticketId: string;
+  userId: string;
+  membershipId: string;
+  role: WappRole;
+  buffer: Buffer;
+  mimetype: string;
+  fileName: string;
+  caption?: string;
+  voiceNote?: boolean;
+}) {
+  let ticket = await getTicket(
+    input.companyId,
+    input.ticketId
+  );
+
+  if (ticket.status === "CLOSED") {
+    throw new AppError(
+      "Este atendimento já foi encerrado.",
+      409,
+      "TICKET_CLOSED"
+    );
+  }
+
+  assertCanOperateTicket(
+    ticket.assignedMembershipId,
+    input.membershipId,
+    input.role
+  );
+
+  if (!ticket.assignedMembershipId) {
+    await claimTicket({
+      companyId: input.companyId,
+      ticketId: ticket.id,
+      membershipId: input.membershipId,
+      role: input.role
+    });
+
+    ticket = await getTicket(
+      input.companyId,
+      input.ticketId
+    );
+  }
+
+  if (
+    ticket.whatsappConnection.status !==
+    "CONNECTED"
+  ) {
+    throw new AppError(
+      "A conexão WhatsApp deste atendimento está offline.",
+      409,
+      "WHATSAPP_NOT_CONNECTED"
+    );
+  }
+
+  const descriptor =
+    outboundMediaDescriptor(
+      input.mimetype
+    );
+
+  const fileName =
+    safeOutboundFileName(
+      input.fileName
+    );
+
+  const caption =
+    input.caption?.trim() || null;
+
+  const isVoiceNote =
+    input.voiceNote === true &&
+    descriptor.messageType === "AUDIO";
+
+  if (
+    input.voiceNote === true &&
+    descriptor.messageType !== "AUDIO"
+  ) {
+    throw new AppError(
+      "Voice note precisa ser um arquivo de áudio.",
+      422,
+      "VOICE_NOTE_INVALID_MEDIA"
+    );
+  }
+
+  if (isVoiceNote && caption) {
+    throw new AppError(
+      "Mensagem de voz não aceita legenda.",
+      422,
+      "VOICE_NOTE_CAPTION_NOT_SUPPORTED"
+    );
+  }
+
+  const result = isVoiceNote
+    ? await evolutionWhatsAppClient.sendWhatsAppAudio({
+        instanceName:
+          ticket.whatsappConnection.instanceName,
+        number:
+          ticket.contact.remoteJid,
+        mimetype:
+          input.mimetype,
+        fileName,
+        buffer:
+          input.buffer
+      })
+    : await evolutionWhatsAppClient.sendMedia({
+      instanceName:
+        ticket.whatsappConnection.instanceName,
+      number:
+        ticket.contact.remoteJid,
+      mediaType:
+        descriptor.providerType,
+      mimetype:
+        input.mimetype,
+      fileName,
+      buffer:
+        input.buffer,
+      caption:
+        caption ?? ""
+    });
+
+  const timestamp =
+    sentTimestamp(result);
+
+  const externalId =
+    sentExternalId(result);
+
+  const message =
+    await prisma.message.upsert({
+      where: {
+        whatsappConnectionId_externalId: {
+          whatsappConnectionId:
+            ticket.whatsappConnectionId,
+          externalId
+        }
+      },
+      update: {
+        sentByUserId:
+          input.userId,
+        direction: "OUTBOUND",
+        type:
+          descriptor.messageType,
+        body: isVoiceNote ? null : caption,
+        mediaMimeType:
+          input.mimetype,
+        mediaFileName:
+          fileName,
+        mediaStatus: "PENDING",
+        mediaError: null
+      },
+      create: {
+        companyId:
+          input.companyId,
+        ticketId:
+          ticket.id,
+        whatsappConnectionId:
+          ticket.whatsappConnectionId,
+        sentByUserId:
+          input.userId,
+        externalId,
+        direction: "OUTBOUND",
+        type:
+          descriptor.messageType,
+        body: isVoiceNote ? null : caption,
+        mediaMimeType:
+          input.mimetype,
+        mediaFileName:
+          fileName,
+        mediaStatus: "PENDING",
+        timestamp,
+        rawPayload:
+          toPrismaJson(result)
+      }
+    });
+
+  let readyMessage = message;
+
+  try {
+    const stored = await storeMedia({
+      companyId:
+        input.companyId,
+      messageId:
+        message.id,
+      buffer:
+        input.buffer,
+      mimetype:
+        input.mimetype,
+      fileName
+    });
+
+    readyMessage =
+      await prisma.message.update({
+        where: {
+          id: message.id
+        },
+        data: {
+          mediaStatus: "READY",
+          mediaStorageKey:
+            stored.storageKey,
+          mediaSize:
+            stored.size,
+          mediaError: null
+        }
+      });
+  } catch (error) {
+    readyMessage =
+      await prisma.message.update({
+        where: {
+          id: message.id
+        },
+        data: {
+          mediaStatus: "FAILED",
+          mediaError:
+            (
+              error instanceof Error
+                ? error.message
+                : "Falha ao armazenar a cópia local da mídia."
+            ).slice(0, 2_000)
+        }
+      });
+  }
+
+  await prisma.ticket.update({
+    where: {
+      id: ticket.id
+    },
+    data: {
+      lastMessage:
+        isVoiceNote
+          ? "[Áudio]"
+          : caption ??
+            descriptor.preview,
+      lastMessageAt:
+        timestamp
+    }
+  });
+
+  publishRealtime(
+    input.companyId,
+    {
+      type: "message.created",
+      ticketId:
+        ticket.id,
+      messageId:
+        readyMessage.id
+    }
+  );
+
+  return readyMessage;
 }

@@ -20,6 +20,30 @@ export interface SendTextInput {
   text: string;
 }
 
+export type WhatsAppMediaType =
+  | "image"
+  | "video"
+  | "audio"
+  | "document";
+
+export interface SendMediaInput {
+  instanceName: string;
+  number: string;
+  mediaType: WhatsAppMediaType;
+  mimetype: string;
+  fileName: string;
+  buffer: Buffer;
+  caption?: string;
+}
+
+export interface SendWhatsAppAudioInput {
+  instanceName: string;
+  number: string;
+  mimetype: string;
+  fileName: string;
+  buffer: Buffer;
+}
+
 export interface DownloadMediaInput {
   instanceName: string;
   message: Record<string, unknown>;
@@ -48,6 +72,14 @@ export interface WhatsAppProviderClient {
 
   sendText(
     input: SendTextInput
+  ): Promise<unknown>;
+
+  sendMedia(
+    input: SendMediaInput
+  ): Promise<unknown>;
+
+  sendWhatsAppAudio(
+    input: SendWhatsAppAudioInput
   ): Promise<unknown>;
 
   downloadMedia(

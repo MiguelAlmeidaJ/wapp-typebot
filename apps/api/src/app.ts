@@ -1,5 +1,6 @@
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import Fastify from "fastify";
 import { ZodError } from "zod";
 
@@ -11,6 +12,7 @@ import { authRoutes } from "./modules/auth/auth.routes.js";
 import { contactRoutes } from "./modules/contacts/contact.routes.js";
 import { whatsappRoutes } from "./modules/whatsapp/whatsapp.routes.js";
 import { ticketRoutes } from "./modules/tickets/ticket.routes.js";
+import { ticketMediaRoutes } from "./modules/tickets/ticket-media.routes.js";
 import { mediaRoutes } from "./modules/media/media.routes.js";
 import { teamRoutes } from "./modules/team/team.routes.js";
 import { realtimeRoutes } from "./modules/realtime/realtime.routes.js";
@@ -44,6 +46,15 @@ export async function buildApp() {
   });
 
   await app.register(cookie);
+
+  await app.register(multipart, {
+    limits: {
+      fileSize: env.MEDIA_MAX_BYTES,
+      files: 1,
+      fields: 4,
+      parts: 5
+    }
+  });
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof AppError) {
@@ -97,6 +108,7 @@ export async function buildApp() {
   await app.register(adminRoutes);
   await app.register(whatsappRoutes);
   await app.register(ticketRoutes);
+  await app.register(ticketMediaRoutes);
   await app.register(mediaRoutes);
   await app.register(realtimeRoutes);
   await app.register(teamRoutes);

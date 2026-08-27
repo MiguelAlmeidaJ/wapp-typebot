@@ -26,11 +26,20 @@ export async function apiFetch(
   path: string,
   init: RequestInit = {}
 ): Promise<Response> {
+  const isFormData =
+    typeof FormData !== "undefined" &&
+    init.body instanceof FormData;
+
   return fetch(`${API_URL}${path}`, {
     ...init,
     credentials: "include",
     headers: {
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(init.body && !isFormData
+        ? {
+            "Content-Type":
+              "application/json"
+          }
+        : {}),
       ...init.headers
     }
   });
