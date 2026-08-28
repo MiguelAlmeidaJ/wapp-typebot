@@ -38,7 +38,16 @@
     "verify": "pnpm security:scan && pnpm db:generate && pnpm test && pnpm typecheck && pnpm build",
     "smoke": "node scripts/smoke-api.mjs",
     "security:scan": "node scripts/security-scan.mjs",
-    "security:revoke-sessions": "pnpm --filter @wapp/api security:revoke-sessions"
+    "security:revoke-sessions": "pnpm --filter @wapp/api security:revoke-sessions",
+    "prod:init": "node -e \"const fs=require('node:fs');const s='infra/production/.env.production.example';const d='infra/production/.env.production';if(fs.existsSync(d)){console.error('Production env already exists:',d);process.exit(1)}fs.copyFileSync(s,d);console.log('Created',d)\"",
+    "prod:preflight": "node scripts/prod-preflight.mjs",
+    "prod:config": "docker compose --env-file infra/production/.env.production -f infra/production/docker-compose.yml config",
+    "prod:build": "docker compose --env-file infra/production/.env.production -f infra/production/docker-compose.yml build",
+    "prod:deploy": "bash scripts/prod-deploy.sh",
+    "prod:ps": "docker compose --env-file infra/production/.env.production -f infra/production/docker-compose.yml ps",
+    "prod:logs": "docker compose --env-file infra/production/.env.production -f infra/production/docker-compose.yml logs -f --tail=200",
+    "prod:down": "docker compose --env-file infra/production/.env.production -f infra/production/docker-compose.yml down",
+    "prod:smoke": "node -e \"const fs=require('node:fs');const env=Object.fromEntries(fs.readFileSync('infra/production/.env.production','utf8').split(/\\\\r?\\\\n/).filter(l=>l&&!l.trim().startsWith('#')&&l.includes('=')).map(l=>{const i=l.indexOf('=');return [l.slice(0,i).trim(),l.slice(i+1).trim()]}));process.env.WAPP_SMOKE_API_URL='https://'+env.WAPP_DOMAIN;import('./scripts/smoke-api.mjs')\""
   },
   "engines": {
     "node": ">=24 <25",

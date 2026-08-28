@@ -72,3 +72,7 @@ cookies.txt
 *.cookies.txt
 *.cookiejar
 # --- /WAPP P1.23 ---
+
+# --- WAPP P1.24 / PRODUCTION SECRETS ---
+infra/production/.env.production
+# --- /WAPP P1.24 ---

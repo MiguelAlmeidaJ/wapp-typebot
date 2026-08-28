@@ -1,0 +1,226 @@
+name: wapp-production
+
+x-api-environment: &api-environment
+  NODE_ENV: production
+  HOST: 0.0.0.0
+  PORT: "4000"
+  WEB_URL: https://${WAPP_DOMAIN}
+  TRUST_PROXY: "true"
+  DATABASE_URL: ${DATABASE_URL}
+  REDIS_URL: ${REDIS_URL}
+  API_BODY_MAX_BYTES: ${API_BODY_MAX_BYTES:-1048576}
+  JWT_SECRET: ${JWT_SECRET}
+  ACCESS_TOKEN_TTL_SECONDS: ${ACCESS_TOKEN_TTL_SECONDS:-900}
+  REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-30}
+  COOKIE_SECURE: "true"
+  EVOLUTION_BASE_URL: ${EVOLUTION_BASE_URL}
+  EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
+  EVOLUTION_WEBHOOK_BASE_URL: https://${WAPP_DOMAIN}
+  EVOLUTION_WEBHOOK_SECRET: ${EVOLUTION_WEBHOOK_SECRET}
+  EVOLUTION_HEALTHCHECK_INTERVAL_SECONDS: ${EVOLUTION_HEALTHCHECK_INTERVAL_SECONDS:-60}
+  WHATSAPP_SESSION_PATH: .runtime/whatsapp
+  MEDIA_STORAGE_DRIVER: s3
+  MEDIA_STORAGE_PATH: .runtime/media
+  MEDIA_MAX_BYTES: ${MEDIA_MAX_BYTES:-26214400}
+  S3_BUCKET: ${S3_BUCKET}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_ENDPOINT: ${S3_ENDPOINT:-}
+  S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+  TYPEBOT_URL: ${TYPEBOT_URL:-}
+  JOBS_EMBEDDED_WORKER: "false"
+  JOBS_MEDIA_CAPTURE_CONCURRENCY: ${JOBS_MEDIA_CAPTURE_CONCURRENCY:-4}
+  JOBS_MEDIA_CAPTURE_ATTEMPTS: ${JOBS_MEDIA_CAPTURE_ATTEMPTS:-5}
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - backend
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysqladmin ping --host=127.0.0.1 --user=root --silent"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--requirepass",
+        "${REDIS_PASSWORD}"
+      ]
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"
+        ]
+      environment:
+        REDIS_PASSWORD: ${REDIS_PASSWORD}
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  migrate:
+    image: wapp-api:${WAPP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/production/api.Dockerfile
+      target: migrate
+    environment: *api-environment
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    image: wapp-api:${WAPP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/production/api.Dockerfile
+      target: runtime
+    restart: unless-stopped
+    environment: *api-environment
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - backend
+      - edge
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  worker:
+    image: wapp-api:${WAPP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/production/api.Dockerfile
+      target: runtime
+    command:
+      [
+        "node",
+        "dist/worker.js"
+      ]
+    restart: unless-stopped
+    environment: *api-environment
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+
+  web:
+    image: wapp-web:${WAPP_IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: infra/production/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://${WAPP_DOMAIN}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+    networks:
+      - edge
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/login').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      WAPP_DOMAIN: ${WAPP_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    networks:
+      - edge
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  backend:
+  edge:
+
+volumes:
+  mysql_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
