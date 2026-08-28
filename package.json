@@ -28,7 +28,17 @@
     "db:studio": "pnpm --filter @wapp/api db:studio",
     "evolution:up": "docker compose --env-file infra/evolution/.env -f infra/evolution/docker-compose.yml up -d",
     "evolution:down": "docker compose --env-file infra/evolution/.env -f infra/evolution/docker-compose.yml down",
-    "evolution:logs": "docker compose --env-file infra/evolution/.env -f infra/evolution/docker-compose.yml logs -f evolution-api"
+    "evolution:logs": "docker compose --env-file infra/evolution/.env -f infra/evolution/docker-compose.yml logs -f evolution-api",
+    "backup:create": "bash scripts/backup-create.sh",
+    "backup:verify": "bash scripts/backup-verify.sh",
+    "backup:prune": "node scripts/backup-prune.mjs",
+    "backup:restore": "bash scripts/backup-restore.sh",
+    "backup:drill": "bash scripts/backup-restore-drill.sh",
+    "test": "pnpm --filter @wapp/api test",
+    "verify": "pnpm security:scan && pnpm db:generate && pnpm test && pnpm typecheck && pnpm build",
+    "smoke": "node scripts/smoke-api.mjs",
+    "security:scan": "node scripts/security-scan.mjs",
+    "security:revoke-sessions": "pnpm --filter @wapp/api security:revoke-sessions"
   },
   "engines": {
     "node": ">=24 <25",

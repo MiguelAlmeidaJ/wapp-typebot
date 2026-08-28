@@ -172,7 +172,8 @@ export function ConversationSearch({
   selectedTicketId: string | null;
   onClose: () => void;
   onOpenTicket: (
-    ticketId: string
+    ticketId: string,
+    messageId: string
   ) => void;
 }) {
   const { request } =
@@ -536,7 +537,8 @@ export function ConversationSearch({
                       <button
                         onClick={() =>
                           onOpenTicket(
-                            message.ticketId
+                            message.ticketId,
+                            message.id
                           )
                         }
                         type="button"

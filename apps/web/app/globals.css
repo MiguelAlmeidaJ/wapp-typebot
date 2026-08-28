@@ -5930,3 +5930,46 @@ button:disabled {
     height: 155px;
   }
 }
+
+/* --- WAPP P1.21 / MESSAGE HISTORY --- */
+
+.message-history-loader {
+  display: flex;
+  justify-content: center;
+  padding: 10px 16px 14px;
+}
+
+.message-history-loader--newer {
+  padding-top: 16px;
+}
+
+.message-history-loader button,
+.closed-ticket-history__load-more {
+  border: 1px solid rgba(20, 31, 25, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.message-history-loader button:disabled,
+.closed-ticket-history__load-more:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.message-row--focused .message-bubble {
+  box-shadow:
+    0 0 0 2px rgba(34, 126, 82, 0.24),
+    0 8px 28px rgba(16, 42, 28, 0.08);
+}
+
+.closed-ticket-history__load-more {
+  align-self: center;
+  margin: 8px auto 14px;
+}
+
+/* --- /WAPP P1.21 --- */

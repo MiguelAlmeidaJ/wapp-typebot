@@ -86,6 +86,12 @@ interface ArchivedMessage {
 
 interface MessagesResponse {
   messages: ArchivedMessage[];
+  pagination: {
+    hasMoreBefore: boolean;
+    olderCursor: string | null;
+    hasMoreAfter: boolean;
+    newerCursor: string | null;
+  };
 }
 
 interface ReopenResponse {
@@ -141,6 +147,45 @@ function messageFallback(
   }
 }
 
+function mergeArchivedMessages(
+  older: ArchivedMessage[],
+  current: ArchivedMessage[]
+) {
+  const byId =
+    new Map<
+      string,
+      ArchivedMessage
+    >();
+
+  for (
+    const message
+    of [
+      ...older,
+      ...current
+    ]
+  ) {
+    byId.set(
+      message.id,
+      message
+    );
+  }
+
+  return Array.from(
+    byId.values()
+  ).sort(
+    (left, right) =>
+      new Date(
+        left.timestamp
+      ).getTime() -
+        new Date(
+          right.timestamp
+        ).getTime() ||
+      left.id.localeCompare(
+        right.id
+      )
+  );
+}
+
 export function ClosedTicketsDrawer({
   onClose,
   onReopened
@@ -160,6 +205,15 @@ export function ClosedTicketsDrawer({
     useState<string | null>(null);
   const [messages, setMessages] =
     useState<ArchivedMessage[]>([]);
+  const [messagePagination, setMessagePagination] =
+    useState({
+      hasMoreBefore: false,
+      olderCursor: null as
+        | string
+        | null
+    });
+  const [loadingOlderMessages, setLoadingOlderMessages] =
+    useState(false);
   const [loadingTickets, setLoadingTickets] =
     useState(true);
   const [loadingMessages, setLoadingMessages] =
@@ -276,13 +330,24 @@ export function ClosedTicketsDrawer({
       try {
         const payload =
           await request<MessagesResponse>(
-            `/api/v1/tickets/${selectedId}/messages`
+            `/api/v1/tickets/${selectedId}/messages?limit=80`
           );
 
         if (!cancelled) {
           setMessages(
             payload.messages
           );
+
+          setMessagePagination({
+            hasMoreBefore:
+              payload
+                .pagination
+                .hasMoreBefore,
+            olderCursor:
+              payload
+                .pagination
+                .olderCursor
+          });
         }
       } catch {
         if (!cancelled) {
@@ -304,6 +369,62 @@ export function ClosedTicketsDrawer({
     request,
     selectedId
   ]);
+
+  async function loadOlderMessages() {
+    if (
+      !selectedId ||
+      !messagePagination.hasMoreBefore ||
+      !messagePagination.olderCursor ||
+      loadingOlderMessages
+    ) {
+      return;
+    }
+
+    setLoadingOlderMessages(
+      true
+    );
+
+    try {
+      const params =
+        new URLSearchParams({
+          limit: "80",
+          before:
+            messagePagination.olderCursor
+        });
+
+      const payload =
+        await request<MessagesResponse>(
+          `/api/v1/tickets/${selectedId}/messages?${params.toString()}`
+        );
+
+      setMessages(
+        current =>
+          mergeArchivedMessages(
+            payload.messages,
+            current
+          )
+      );
+
+      setMessagePagination({
+        hasMoreBefore:
+          payload
+            .pagination
+            .hasMoreBefore,
+        olderCursor:
+          payload
+            .pagination
+            .olderCursor
+      });
+    } catch {
+      setError(
+        "Não foi possível carregar mensagens mais antigas."
+      );
+    } finally {
+      setLoadingOlderMessages(
+        false
+      );
+    }
+  }
 
   async function reopen() {
     if (
@@ -512,6 +633,21 @@ export function ClosedTicketsDrawer({
               </header>
 
               <div className="closed-ticket-history__messages">
+                {messagePagination.hasMoreBefore && !loadingMessages && (
+                  <button
+                    className="closed-ticket-history__load-more"
+                    disabled={loadingOlderMessages}
+                    onClick={() =>
+                      void loadOlderMessages()
+                    }
+                    type="button"
+                  >
+                    {loadingOlderMessages
+                      ? "Carregando…"
+                      : "Carregar mensagens anteriores"}
+                  </button>
+                )}
+
                 {loadingMessages ? (
                   <div className="closed-tickets-empty">
                     Carregando histórico…

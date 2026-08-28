@@ -3,12 +3,12 @@ import { z } from "zod";
 
 import { requireAuth } from "../auth/auth.guard.js";
 import { listTicketEvents } from "./ticket-event.service.js";
+import { listTicketMessagePage } from "./ticket-message-history.service.js";
 import {
   reopenTicket,
   claimTicket,
   closeTicket,
   createTicketNote,
-  listTicketMessages,
   listTicketNotes,
   listTickets,
   markTicketRead,
@@ -20,6 +20,41 @@ import {
 const ticketIdSchema = z.object({
   id: z.string().uuid()
 });
+
+const messageListSchema = z
+  .object({
+    limit: z.coerce
+      .number()
+      .int()
+      .min(20)
+      .max(100)
+      .default(80),
+    before: z
+      .string()
+      .uuid()
+      .optional(),
+    after: z
+      .string()
+      .uuid()
+      .optional(),
+    around: z
+      .string()
+      .uuid()
+      .optional()
+  })
+  .refine(
+    value =>
+      [
+        value.before,
+        value.after,
+        value.around
+      ].filter(Boolean)
+        .length <= 1,
+    {
+      message:
+        "Use apenas um cursor de mensagens por requisição."
+    }
+  );
 
 const listSchema = z.object({
   status: z
@@ -116,15 +151,35 @@ export async function ticketRoutes(app: FastifyInstance) {
   app.get(
     "/api/v1/tickets/:id/messages",
     async request => {
-      const auth = await requireAuth(request);
-      const params = ticketIdSchema.parse(request.params);
+      const auth =
+        await requireAuth(
+          request
+        );
 
-      return {
-        messages: await listTicketMessages(
+      const params =
+        ticketIdSchema.parse(
+          request.params
+        );
+
+      const query =
+        messageListSchema.parse(
+          request.query
+        );
+
+      return listTicketMessagePage({
+        companyId:
           auth.companyId,
-          params.id
-        )
-      };
+        ticketId:
+          params.id,
+        limit:
+          query.limit,
+        before:
+          query.before,
+        after:
+          query.after,
+        around:
+          query.around
+      });
     }
   );
 

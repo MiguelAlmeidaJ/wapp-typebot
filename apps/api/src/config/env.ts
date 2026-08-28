@@ -7,6 +7,11 @@ const booleanFromEnv = z
   .default("false")
   .transform(value => value === "true");
 
+const booleanTrueFromEnv = z
+  .enum(["true", "false"])
+  .default("true")
+  .transform(value => value === "true");
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   HOST: z.string().default("0.0.0.0"),
@@ -16,6 +21,19 @@ const envSchema = z.object({
 
   DATABASE_URL: z.string().url().startsWith("mysql://"),
   REDIS_URL: z.string().min(1).optional(),
+  JOBS_EMBEDDED_WORKER: booleanTrueFromEnv,
+  JOBS_MEDIA_CAPTURE_CONCURRENCY: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(32)
+    .default(4),
+  JOBS_MEDIA_CAPTURE_ATTEMPTS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(20)
+    .default(5),
   API_BODY_MAX_BYTES: z.coerce
     .number()
     .int()
@@ -31,18 +49,24 @@ const envSchema = z.object({
   EVOLUTION_API_KEY: z.string().min(32),
   EVOLUTION_WEBHOOK_BASE_URL: z.string().url(),
   EVOLUTION_WEBHOOK_SECRET: z.string().min(32),
+  EVOLUTION_HEALTHCHECK_INTERVAL_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(15)
+    .max(3_600)
+    .default(60),
 
   WHATSAPP_SESSION_PATH: z.string().default(".runtime/whatsapp"),
   MEDIA_STORAGE_DRIVER: z
     .enum(["local", "s3"])
     .default("local"),
   MEDIA_STORAGE_PATH: z.string().default(".runtime/media"),
-  S3_BUCKET: z.string().min(1).optional(),
+  S3_BUCKET: z.string().min(1).optional().or(z.literal("")),
   S3_REGION: z.string().min(1).default("us-east-1"),
   S3_ENDPOINT: z.string().url().optional().or(z.literal("")),
   S3_FORCE_PATH_STYLE: booleanFromEnv,
-  S3_ACCESS_KEY_ID: z.string().min(1).optional(),
-  S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  S3_ACCESS_KEY_ID: z.string().min(1).optional().or(z.literal("")),
+  S3_SECRET_ACCESS_KEY: z.string().min(1).optional().or(z.literal("")),
   MEDIA_MAX_BYTES: z.coerce
     .number()
     .int()

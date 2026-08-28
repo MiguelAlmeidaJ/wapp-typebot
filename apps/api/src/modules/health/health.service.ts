@@ -1,3 +1,4 @@
+import { getJobRuntimeStatus } from "../../jobs/job-runtime.js";
 import { env } from "../../config/env.js";
 import { prisma } from "../../lib/database.js";
 import { getRealtimeTransportStatus } from "../realtime/realtime.bus.js";
@@ -206,6 +207,8 @@ export async function getHealthDetails() {
           }
         : {})
     },
+    jobRuntime:
+      getJobRuntimeStatus(),
     timestamp:
       new Date()
         .toISOString()

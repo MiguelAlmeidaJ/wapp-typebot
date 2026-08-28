@@ -165,10 +165,36 @@ export async function evolutionWebhookRoutes(
               id: connection.id
             },
             data: {
-              status: mappedState,
-              phoneNumber: owner?.replace(/\D/g, "") || undefined,
-              lastError: null,
-              lastEventAt: new Date()
+              status:
+                mappedState,
+              phoneNumber:
+                owner?.replace(
+                  /\D/g,
+                  ""
+                ) ||
+                undefined,
+              lastError:
+                null,
+              healthStatus:
+                mappedState ===
+                "CONNECTED"
+                  ? "HEALTHY"
+                  : "DEGRADED",
+              lastHealthCheckAt:
+                new Date(),
+              ...(mappedState ===
+              "CONNECTED"
+                ? {
+                    lastHealthOkAt:
+                      new Date()
+                  }
+                : {}),
+              healthError:
+                null,
+              consecutiveHealthFailures:
+                0,
+              lastEventAt:
+                new Date()
             }
           });
 

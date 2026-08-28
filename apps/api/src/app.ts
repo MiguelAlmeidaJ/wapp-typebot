@@ -5,6 +5,10 @@ import Fastify from "fastify";
 import { ZodError } from "zod";
 
 import { env } from "./config/env.js";
+import {
+  closeJobRuntime,
+  startEmbeddedJobWorker
+} from "./jobs/job-runtime.js";
 import { AppError } from "./errors/app-error.js";
 import { closeRateLimitStore } from "./security/rate-limit.js";
 import { prisma } from "./lib/database.js";
@@ -12,6 +16,10 @@ import { adminRoutes } from "./modules/admin/admin.routes.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { contactRoutes } from "./modules/contacts/contact.routes.js";
 import { whatsappRoutes } from "./modules/whatsapp/whatsapp.routes.js";
+import {
+  startEvolutionHealthMonitor,
+  stopEvolutionHealthMonitor
+} from "./modules/whatsapp/evolution-health-monitor.service.js";
 import { ticketRoutes } from "./modules/tickets/ticket.routes.js";
 import { ticketMediaRoutes } from "./modules/tickets/ticket-media.routes.js";
 import { mediaRoutes } from "./modules/media/media.routes.js";
@@ -190,10 +198,16 @@ export async function buildApp() {
   await app.register(evolutionWebhookRoutes);
 
   app.addHook("onClose", async () => {
+    await stopEvolutionHealthMonitor();
+    await closeJobRuntime();
     await closeRealtimeTransport();
     await closeRateLimitStore();
     await prisma.$disconnect();
   });
+
+  startEmbeddedJobWorker();
+
+  startEvolutionHealthMonitor();
 
   return app;
 }

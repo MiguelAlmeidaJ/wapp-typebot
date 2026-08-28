@@ -62,3 +62,13 @@ apps/api/.runtime/
 # --- WAPP P0.5 ---
 infra/evolution/.env
 # --- /WAPP P0.5 ---
+
+# --- WAPP P1.18 / LOCAL BACKUPS ---
+.backups/
+# --- /WAPP P1.18 ---
+
+# --- WAPP P1.23 / LOCAL AUTH ARTIFACTS ---
+cookies.txt
+*.cookies.txt
+*.cookiejar
+# --- /WAPP P1.23 ---

@@ -17,7 +17,11 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "worker:dev": "tsx watch src/worker.ts",
+    "worker:start": "node dist/worker.js",
+    "test": "tsx --test src/security/permissions.test.ts src/modules/tickets/message-history.cursor.test.ts",
+    "security:revoke-sessions": "tsx src/scripts/revoke-all-sessions.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1119.0",
@@ -26,6 +30,7 @@
     "@fastify/multipart": "^9.4.0",
     "@prisma/adapter-mariadb": "7.9.1",
     "@prisma/client": "7.9.1",
+    "bullmq": "^5.81.3",
     "dotenv": "^17.0.0",
     "fastify": "^5.0.0",
     "ioredis": "^5.11.1",

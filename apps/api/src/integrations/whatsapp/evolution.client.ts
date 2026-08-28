@@ -225,12 +225,13 @@ export class EvolutionWhatsAppClient
       {
         method: "POST",
         body: JSON.stringify({
-          enabled: true,
-          url: input.webhookUrl,
-          webhookByEvents: false,
-          webhookBase64: false,
-          base64: false,
-          events: input.events
+          webhook: {
+            enabled: true,
+            url: input.webhookUrl,
+            byEvents: false,
+            base64: false,
+            events: input.events
+          }
         })
       }
     );

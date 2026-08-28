@@ -63,6 +63,20 @@ function mapEvolutionState(
   }
 }
 
+function mapEvolutionHealth(
+  state: string
+): "HEALTHY" | "DEGRADED" {
+  const mapped =
+    mapEvolutionState(
+      state
+    );
+
+  return mapped ===
+    "CONNECTED"
+    ? "HEALTHY"
+    : "DEGRADED";
+}
+
 export async function listConnections(companyId: string) {
   return prisma.whatsAppConnection.findMany({
     where: {
@@ -280,8 +294,28 @@ export async function syncConnection(
         id: connection.id
       },
       data: {
-        status: mapEvolutionState(state.state),
+        status:
+          mapEvolutionState(
+            state.state
+          ),
         lastError: null,
+        healthStatus:
+          mapEvolutionHealth(
+            state.state
+          ),
+        lastHealthCheckAt:
+          new Date(),
+        ...(mapEvolutionHealth(
+          state.state
+        ) === "HEALTHY"
+          ? {
+              lastHealthOkAt:
+                new Date()
+            }
+          : {}),
+        healthError: null,
+        consecutiveHealthFailures:
+          0,
         lastEventAt: new Date()
       }
     });
@@ -302,6 +336,15 @@ export async function syncConnection(
       },
       data: {
         lastError: message,
+        healthStatus:
+          "DOWN",
+        lastHealthCheckAt:
+          new Date(),
+        healthError:
+          message,
+        consecutiveHealthFailures: {
+          increment: 1
+        },
         lastEventAt: new Date()
       }
     });

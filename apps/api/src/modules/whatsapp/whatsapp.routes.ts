@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { requirePermission } from "../auth/auth.guard.js";
+import { getEvolutionHealthSummary } from "./evolution-health-monitor.service.js";
 import {
   connectConnection,
   createConnection,
@@ -38,6 +39,21 @@ const testMessageSchema = z.object({
 export async function whatsappRoutes(
   app: FastifyInstance
 ) {
+  app.get(
+    "/api/v1/whatsapp/health",
+    async request => {
+      const auth =
+        await requirePermission(
+          request,
+          "whatsapp.read"
+        );
+
+      return getEvolutionHealthSummary(
+        auth.companyId
+      );
+    }
+  );
+
   app.get(
     "/api/v1/whatsapp/connections",
     async request => {

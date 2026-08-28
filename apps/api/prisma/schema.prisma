@@ -26,6 +26,13 @@ enum WhatsAppConnectionStatus {
   ERROR
 }
 
+enum WhatsAppHealthStatus {
+  UNKNOWN
+  HEALTHY
+  DEGRADED
+  DOWN
+}
+
 enum TicketStatus {
   OPEN
   PENDING
@@ -167,6 +174,11 @@ model WhatsAppConnection {
   profileName    String?                  @db.VarChar(160)
   lastError      String?                  @db.Text
   lastEventAt    DateTime?
+  healthStatus   WhatsAppHealthStatus      @default(UNKNOWN)
+  lastHealthCheckAt DateTime?
+  lastHealthOkAt DateTime?
+  healthError    String?                   @db.Text
+  consecutiveHealthFailures Int            @default(0)
   acceptGroups   Boolean                  @default(false)
   defaultQueueId String?                  @db.Char(36)
   company        Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -177,6 +189,7 @@ model WhatsAppConnection {
   updatedAt      DateTime                 @updatedAt
 
   @@index([companyId, status])
+  @@index([companyId, healthStatus])
   @@index([companyId, createdAt])
   @@index([companyId, defaultQueueId])
 }

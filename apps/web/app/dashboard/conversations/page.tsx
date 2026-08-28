@@ -179,8 +179,16 @@ interface TicketsResponse {
   tickets: Ticket[];
 }
 
+interface MessagePagination {
+  hasMoreBefore: boolean;
+  olderCursor: string | null;
+  hasMoreAfter: boolean;
+  newerCursor: string | null;
+}
+
 interface MessagesResponse {
   messages: Message[];
+  pagination: MessagePagination;
 }
 
 interface QueuesResponse {
@@ -387,6 +395,52 @@ function dateTimeLabel(value: string) {
   }).format(new Date(value));
 }
 
+function mergeMessagePages(
+  ...pages: Message[][]
+) {
+  const byId =
+    new Map<
+      string,
+      Message
+    >();
+
+  for (
+    const page
+    of pages
+  ) {
+    for (
+      const message
+      of page
+    ) {
+      byId.set(
+        message.id,
+        message
+      );
+    }
+  }
+
+  return Array.from(
+    byId.values()
+  ).sort(
+    (left, right) => {
+      const time =
+        new Date(
+          left.timestamp
+        ).getTime() -
+        new Date(
+          right.timestamp
+        ).getTime();
+
+      return (
+        time ||
+        left.id.localeCompare(
+          right.id
+        )
+      );
+    }
+  );
+}
+
 export default function ConversationsPage() {
   const router = useRouter();
   const { session, loading, request, subscribe } = useAuth();
@@ -396,6 +450,19 @@ export default function ConversationsPage() {
   const [team, setTeam] = useState<TeamMembership[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [messagePagination, setMessagePagination] =
+    useState<MessagePagination>({
+      hasMoreBefore: false,
+      olderCursor: null,
+      hasMoreAfter: false,
+      newerCursor: null
+    });
+  const [loadingOlderMessages, setLoadingOlderMessages] =
+    useState(false);
+  const [loadingNewerMessages, setLoadingNewerMessages] =
+    useState(false);
+  const [focusedMessageId, setFocusedMessageId] =
+    useState<string | null>(null);
   const [notes, setNotes] = useState<TicketNote[]>([]);
   const [quickReplies, setQuickReplies] =
     useState<QuickReply[]>([]);
@@ -470,6 +537,12 @@ export default function ConversationsPage() {
   const [error, setError] = useState("");
   const [onlineMembershipIds, setOnlineMembershipIds] = useState<string[]>([]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const conversationScrollRef =
+    useRef<HTMLDivElement | null>(null);
+  const shouldScrollToBottomRef =
+    useRef(true);
+  const skipNextSelectedLoadRef =
+    useRef(false);
   const attachmentInputRef =
     useRef<HTMLInputElement | null>(null);
   const composerTextRef =
@@ -682,16 +755,286 @@ export default function ConversationsPage() {
   );
 
   const loadMessages = useCallback(
-    async (ticketId: string) => {
-      const payload = await request<MessagesResponse>(
-        `/api/v1/tickets/${ticketId}/messages`
+    async (
+      ticketId: string,
+      options: {
+        around?: string;
+      } = {}
+    ) => {
+      const params =
+        new URLSearchParams({
+          limit: "80"
+        });
+
+      if (options.around) {
+        params.set(
+          "around",
+          options.around
+        );
+      }
+
+      const payload =
+        await request<MessagesResponse>(
+          `/api/v1/tickets/${ticketId}/messages?${params.toString()}`
+        );
+
+      shouldScrollToBottomRef.current =
+        !options.around;
+
+      setMessages(
+        payload.messages
       );
-      setMessages(payload.messages);
-      await request(`/api/v1/tickets/${ticketId}/read`, {
-        method: "POST"
-      });
+
+      setMessagePagination(
+        payload.pagination
+      );
+
+      await request(
+        `/api/v1/tickets/${ticketId}/read`,
+        {
+          method: "POST"
+        }
+      );
+
+      if (options.around) {
+        const anchorId =
+          options.around;
+
+        setFocusedMessageId(
+          anchorId
+        );
+
+        window.requestAnimationFrame(
+          () => {
+            window.requestAnimationFrame(
+              () => {
+                document
+                  .querySelector(
+                    `[data-message-id="${anchorId}"]`
+                  )
+                  ?.scrollIntoView({
+                    behavior:
+                      "smooth",
+                    block:
+                      "center"
+                  });
+              }
+            );
+          }
+        );
+
+        window.setTimeout(
+          () => {
+            setFocusedMessageId(
+              current =>
+                current ===
+                anchorId
+                  ? null
+                  : current
+            );
+          },
+          3_000
+        );
+      }
     },
     [request]
+  );
+
+  const loadOlderMessages = useCallback(
+    async () => {
+      if (
+        !selectedId ||
+        !messagePagination.hasMoreBefore ||
+        !messagePagination.olderCursor ||
+        loadingOlderMessages
+      ) {
+        return;
+      }
+
+      const scroller =
+        conversationScrollRef.current;
+
+      const previousHeight =
+        scroller?.scrollHeight ??
+        0;
+
+      const previousTop =
+        scroller?.scrollTop ??
+        0;
+
+      setLoadingOlderMessages(
+        true
+      );
+
+      try {
+        const params =
+          new URLSearchParams({
+            limit: "80",
+            before:
+              messagePagination.olderCursor
+          });
+
+        const payload =
+          await request<MessagesResponse>(
+            `/api/v1/tickets/${selectedId}/messages?${params.toString()}`
+          );
+
+        shouldScrollToBottomRef.current =
+          false;
+
+        setMessages(
+          current =>
+            mergeMessagePages(
+              payload.messages,
+              current
+            )
+        );
+
+        setMessagePagination(
+          current => ({
+            ...current,
+            hasMoreBefore:
+              payload
+                .pagination
+                .hasMoreBefore,
+            olderCursor:
+              payload
+                .pagination
+                .olderCursor
+          })
+        );
+
+        window.requestAnimationFrame(
+          () => {
+            const currentScroller =
+              conversationScrollRef.current;
+
+            if (
+              !currentScroller
+            ) {
+              return;
+            }
+
+            currentScroller.scrollTop =
+              currentScroller.scrollHeight -
+              previousHeight +
+              previousTop;
+          }
+        );
+      } finally {
+        setLoadingOlderMessages(
+          false
+        );
+      }
+    },
+    [
+      loadingOlderMessages,
+      messagePagination.hasMoreBefore,
+      messagePagination.olderCursor,
+      request,
+      selectedId
+    ]
+  );
+
+  const loadNewerMessages = useCallback(
+    async () => {
+      if (
+        !selectedId ||
+        !messagePagination.hasMoreAfter ||
+        !messagePagination.newerCursor ||
+        loadingNewerMessages
+      ) {
+        return;
+      }
+
+      setLoadingNewerMessages(
+        true
+      );
+
+      try {
+        const params =
+          new URLSearchParams({
+            limit: "80",
+            after:
+              messagePagination.newerCursor
+          });
+
+        const payload =
+          await request<MessagesResponse>(
+            `/api/v1/tickets/${selectedId}/messages?${params.toString()}`
+          );
+
+        shouldScrollToBottomRef.current =
+          false;
+
+        setMessages(
+          current =>
+            mergeMessagePages(
+              current,
+              payload.messages
+            )
+        );
+
+        setMessagePagination(
+          current => ({
+            ...current,
+            hasMoreAfter:
+              payload
+                .pagination
+                .hasMoreAfter,
+            newerCursor:
+              payload
+                .pagination
+                .newerCursor
+          })
+        );
+      } finally {
+        setLoadingNewerMessages(
+          false
+        );
+      }
+    },
+    [
+      loadingNewerMessages,
+      messagePagination.hasMoreAfter,
+      messagePagination.newerCursor,
+      request,
+      selectedId
+    ]
+  );
+
+  const refreshLatestMessages = useCallback(
+    async (
+      ticketId: string,
+      scrollToBottom =
+        false
+    ) => {
+      if (
+        messagePagination.hasMoreAfter
+      ) {
+        return;
+      }
+
+      const payload =
+        await request<MessagesResponse>(
+          `/api/v1/tickets/${ticketId}/messages?limit=80`
+        );
+
+      shouldScrollToBottomRef.current =
+        scrollToBottom;
+
+      setMessages(
+        current =>
+          mergeMessagePages(
+            current,
+            payload.messages
+          )
+      );
+    },
+    [
+      messagePagination.hasMoreAfter,
+      request
+    ]
   );
 
   useEffect(() => {
@@ -724,20 +1067,46 @@ export default function ConversationsPage() {
   useEffect(() => {
     if (!selectedId) {
       setMessages([]);
+      setMessagePagination({
+        hasMoreBefore:
+          false,
+        olderCursor:
+          null,
+        hasMoreAfter:
+          false,
+        newerCursor:
+          null
+      });
       setNotes([]);
       setNotesOpen(false);
       return;
     }
 
+    if (
+      skipNextSelectedLoadRef.current
+    ) {
+      skipNextSelectedLoadRef.current =
+        false;
+      return;
+    }
+
     void Promise.all([
-      loadMessages(selectedId),
-      loadNotes(selectedId)
+      loadMessages(
+        selectedId
+      ),
+      loadNotes(
+        selectedId
+      )
     ]).catch(() => {
       setError(
         "Não foi possível carregar o atendimento."
       );
     });
-  }, [loadMessages, loadNotes, selectedId]);
+  }, [
+    loadMessages,
+    loadNotes,
+    selectedId
+  ]);
 
   useEffect(() => {
     if (!selectedTicket) {
@@ -761,8 +1130,19 @@ export default function ConversationsPage() {
       ) {
         void loadTickets();
 
-        if (selectedId && (!event.ticketId || event.ticketId === selectedId)) {
-          void loadMessages(selectedId);
+        if (
+          selectedId &&
+          (
+            !event.ticketId ||
+            event.ticketId ===
+              selectedId
+          )
+        ) {
+          void refreshLatestMessages(
+            selectedId,
+            event.type ===
+              "message.created"
+          );
         }
       }
 
@@ -811,6 +1191,7 @@ export default function ConversationsPage() {
     loadQuickReplies,
     loadReferenceData,
     loadTickets,
+    refreshLatestMessages,
     selectedId,
     session,
     subscribe
@@ -827,10 +1208,21 @@ export default function ConversationsPage() {
   }, [loadTickets, session]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end"
-    });
+    if (
+      !shouldScrollToBottomRef.current
+    ) {
+      shouldScrollToBottomRef.current =
+        true;
+      return;
+    }
+
+    bottomRef.current
+      ?.scrollIntoView({
+        behavior:
+          "smooth",
+        block:
+          "end"
+      });
   }, [messages]);
 
   // [P1.3 attachment preview]
@@ -859,48 +1251,49 @@ export default function ConversationsPage() {
   }, [attachment]);
 
   // [P1.2f pending media fallback]
-  // SSE remains primary. This polls only while media is still processing.
+  // SSE remains primary. Polling only refreshes the latest page while media
+  // is processing and never discards older pages already loaded by P1.21.
   useEffect(() => {
     if (
       !session ||
       !selectedId ||
-      !hasPendingMedia
+      !hasPendingMedia ||
+      messagePagination.hasMoreAfter
     ) {
       return;
     }
 
-    let cancelled = false;
-
-    const refreshPendingMedia = async () => {
-      try {
-        const payload = await request<MessagesResponse>(
-          `/api/v1/tickets/${selectedId}/messages`
-        );
-
-        if (!cancelled) {
-          setMessages(payload.messages);
+    const refreshPendingMedia =
+      async () => {
+        try {
+          await refreshLatestMessages(
+            selectedId,
+            false
+          );
+        } catch {
+          // Non-fatal fallback. Realtime or the next tick can recover.
         }
-      } catch {
-        // Non-fatal fallback. Realtime or the next tick can recover.
-      }
-    };
+      };
 
-    const interval = window.setInterval(
-      () => {
-        void refreshPendingMedia();
-      },
-      1_200
-    );
+    const interval =
+      window.setInterval(
+        () => {
+          void refreshPendingMedia();
+        },
+        1_200
+      );
 
     void refreshPendingMedia();
 
     return () => {
-      cancelled = true;
-      window.clearInterval(interval);
+      window.clearInterval(
+        interval
+      );
     };
   }, [
     hasPendingMedia,
-    request,
+    messagePagination.hasMoreAfter,
+    refreshLatestMessages,
     selectedId,
     session
   ]);
@@ -2132,9 +2525,42 @@ export default function ConversationsPage() {
                     onClose={() =>
                       setConversationSearchOpen(false)
                     }
-                    onOpenTicket={ticketId => {
-                      setSelectedId(ticketId);
-                      setConversationSearchOpen(false);
+                    onOpenTicket={(
+                      ticketId,
+                      messageId
+                    ) => {
+                      if (
+                        ticketId !==
+                        selectedId
+                      ) {
+                        skipNextSelectedLoadRef.current =
+                          true;
+                      }
+
+                      setSelectedId(
+                        ticketId
+                      );
+
+                      setConversationSearchOpen(
+                        false
+                      );
+
+                      void Promise.all([
+                        loadMessages(
+                          ticketId,
+                          {
+                            around:
+                              messageId
+                          }
+                        ),
+                        loadNotes(
+                          ticketId
+                        )
+                      ]).catch(() => {
+                        setError(
+                          "Não foi possível abrir a mensagem encontrada."
+                        );
+                      });
                     }}
                     selectedTicketId={selectedId}
                   />
@@ -2659,14 +3085,37 @@ export default function ConversationsPage() {
                   </aside>
                 )}
 
-                <div className="conversation-scroll">
+                <div
+                  className="conversation-scroll"
+                  ref={conversationScrollRef}
+                >
+                {messagePagination.hasMoreBefore && (
+                  <div className="message-history-loader">
+                    <button
+                      disabled={loadingOlderMessages}
+                      onClick={() =>
+                        void loadOlderMessages()
+                      }
+                      type="button"
+                    >
+                      {loadingOlderMessages
+                        ? "Carregando…"
+                        : "Carregar mensagens anteriores"}
+                    </button>
+                  </div>
+                )}
                 {messages.map(message => (
                   <div
-                    className={
+                    className={`${
                       message.direction === "OUTBOUND"
                         ? "message-row message-row--out"
                         : "message-row message-row--in"
-                    }
+                    }${
+                      focusedMessageId === message.id
+                        ? " message-row--focused"
+                        : ""
+                    }`}
+                    data-message-id={message.id}
                     key={message.id}
                   >
                     <article
@@ -2740,6 +3189,23 @@ export default function ConversationsPage() {
                     </article>
                   </div>
                 ))}
+
+                {messagePagination.hasMoreAfter && (
+                  <div className="message-history-loader message-history-loader--newer">
+                    <button
+                      disabled={loadingNewerMessages}
+                      onClick={() =>
+                        void loadNewerMessages()
+                      }
+                      type="button"
+                    >
+                      {loadingNewerMessages
+                        ? "Carregando…"
+                        : "Carregar mensagens mais recentes"}
+                    </button>
+                  </div>
+                )}
+
                 <div ref={bottomRef} />
                               </div>
 

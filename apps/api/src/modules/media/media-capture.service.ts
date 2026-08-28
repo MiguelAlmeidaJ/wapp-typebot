@@ -1,6 +1,5 @@
-import { setImmediate } from "node:timers";
-
 import { AppError } from "../../errors/app-error.js";
+import { enqueueMediaCaptureJob } from "../../jobs/media-capture.queue.js";
 import { evolutionWhatsAppClient } from "../../integrations/whatsapp/evolution.client.js";
 import { prisma } from "../../lib/database.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
@@ -36,7 +35,10 @@ function decodeBase64(value: string) {
 }
 
 export async function captureMessageMedia(
-  messageId: string
+  messageId: string,
+  options: {
+    throwOnFailure?: boolean;
+  } = {}
 ) {
   const message =
     await prisma.message.findUnique({
@@ -172,6 +174,18 @@ export async function captureMessageMedia(
       messageId: message.id
     });
 
+    if (
+      options.throwOnFailure
+    ) {
+      throw (
+        error instanceof Error
+          ? error
+          : new Error(
+              messageText
+            )
+      );
+    }
+
     return failed;
   }
 }
@@ -179,7 +193,21 @@ export async function captureMessageMedia(
 export function scheduleMessageMediaCapture(
   messageId: string
 ) {
-  setImmediate(() => {
+  void enqueueMediaCaptureJob(
+    messageId
+  ).catch(error => {
+    /*
+     * Redis queue failures must not lose the media workflow. P1.15 readiness
+     * will expose Redis degradation in production; locally/transiently we
+     * preserve the previous direct capture behavior.
+     */
+    console.warn(
+      "[jobs:media] enqueue failed; using direct fallback",
+      error instanceof Error
+        ? error.message
+        : error
+    );
+
     void captureMessageMedia(
       messageId
     ).catch(() => {

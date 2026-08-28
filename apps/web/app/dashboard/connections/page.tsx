@@ -19,6 +19,12 @@ type ConnectionStatus =
   | "DISCONNECTED"
   | "ERROR";
 
+type HealthStatus =
+  | "UNKNOWN"
+  | "HEALTHY"
+  | "DEGRADED"
+  | "DOWN";
+
 interface QueueOption {
   id: string;
   name: string;
@@ -34,6 +40,11 @@ interface WhatsAppConnection {
   profileName: string | null;
   lastError: string | null;
   lastEventAt: string | null;
+  healthStatus: HealthStatus;
+  lastHealthCheckAt: string | null;
+  lastHealthOkAt: string | null;
+  healthError: string | null;
+  consecutiveHealthFailures: number;
   acceptGroups: boolean;
   defaultQueueId: string | null;
   defaultQueue?: QueueOption | null;
@@ -79,6 +90,35 @@ const statusLabels: Record<ConnectionStatus, string> = {
   DISCONNECTED: "Desconectada",
   ERROR: "Erro"
 };
+
+const healthLabels: Record<HealthStatus, string> = {
+  UNKNOWN: "Aguardando checagem",
+  HEALTHY: "Saudável",
+  DEGRADED: "Degradada",
+  DOWN: "Evolution indisponível"
+};
+
+function healthCheckLabel(
+  value: string | null
+) {
+  if (!value) {
+    return "ainda não verificada";
+  }
+
+  return new Intl.DateTimeFormat(
+    "pt-BR",
+    {
+      dateStyle:
+        "short",
+      timeStyle:
+        "short"
+    }
+  ).format(
+    new Date(
+      value
+    )
+  );
+}
 
 function normalizeBase64(value?: string) {
   if (!value) return undefined;
@@ -149,10 +189,10 @@ export default function ConnectionsPage() {
     const timer = window.setInterval(() => {
       void Promise.all(
         connections
-          .filter(connection =>
-            ["CONNECTING", "CONNECTED", "DISCONNECTED"].includes(
-              connection.status
-            )
+          .filter(
+            connection =>
+              connection.status ===
+              "CONNECTING"
           )
           .map(async connection => {
             try {
@@ -437,6 +477,18 @@ export default function ConnectionsPage() {
                         Número <strong>{connection.phoneNumber}</strong>
                       </span>
                     )}
+                    <span>
+                      Saúde{" "}
+                      <strong>
+                        {healthLabels[connection.healthStatus]}
+                      </strong>
+                    </span>
+                    <span>
+                      Checagem{" "}
+                      <strong>
+                        {healthCheckLabel(connection.lastHealthCheckAt)}
+                      </strong>
+                    </span>
                   </div>
 
                   {isAdmin && (
@@ -487,6 +539,13 @@ export default function ConnectionsPage() {
                       {connection.lastError}
                     </div>
                   )}
+
+                  {connection.healthError &&
+                    connection.healthError !== connection.lastError && (
+                      <div className="connection-error">
+                        Evolution: {connection.healthError}
+                      </div>
+                    )}
                 </div>
 
                 <div className="connection-actions">

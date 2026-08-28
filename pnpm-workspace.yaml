@@ -4,6 +4,7 @@ packages:
 allowBuilds:
   '@prisma/engines': true
   esbuild: true
+  msgpackr-extract: true
   prisma: true
 minimumReleaseAgeExclude:
   - '@next/env@16.3.3'
