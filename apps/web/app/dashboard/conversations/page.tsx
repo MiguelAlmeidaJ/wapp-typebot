@@ -8,7 +8,7 @@ import {
   useRef,
   useState
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import fixWebmDuration from "fix-webm-duration";
 
 import { useAuth } from "@/components/auth-provider";
@@ -17,6 +17,7 @@ import { ConversationSearch } from "@/components/conversations/conversation-sear
 import { ClosedTicketsDrawer } from "@/components/conversations/closed-tickets-drawer";
 import { SlaMonitorDrawer } from "@/components/conversations/sla-monitor-drawer";
 import { TicketHistoryDrawer } from "@/components/conversations/ticket-history-drawer";
+import { ScheduledMessageDrawer } from "@/components/conversations/scheduled-message-drawer";
 import { ApiError } from "@/lib/api";
 
 interface Contact {
@@ -608,6 +609,7 @@ const REACTION_OPTIONS = [
 
 export default function ConversationsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { session, loading, request, subscribe } = useAuth();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -702,6 +704,8 @@ export default function ConversationsPage() {
     useState<Message | null>(null);
   const [reactionPickerMessageId, setReactionPickerMessageId] =
     useState<string | null>(null);
+  const [scheduledMessagesOpen, setScheduledMessagesOpen] =
+    useState(false);
   const [reactingMessageId, setReactingMessageId] =
     useState<string | null>(null);
   const [attachment, setAttachment] =
@@ -759,6 +763,11 @@ export default function ConversationsPage() {
           session.role
         )
       : false;
+
+  const notificationTicketId =
+    searchParams.get(
+      "ticket"
+    );
 
   const selectedTicket = useMemo(
     () => tickets.find(ticket => ticket.id === selectedId) ?? null,
@@ -1411,7 +1420,35 @@ export default function ConversationsPage() {
   ]);
 
   useEffect(() => {
+    if (
+      notificationTicketId &&
+      tickets.some(
+        ticket =>
+          ticket.id ===
+          notificationTicketId
+      )
+    ) {
+      setSelectedId(
+        notificationTicketId
+      );
+
+      router.replace(
+        "/dashboard/conversations",
+        {
+          scroll:
+            false
+        }
+      );
+    }
+  }, [
+    notificationTicketId,
+    router,
+    tickets
+  ]);
+
+  useEffect(() => {
     if (!selectedId) {
+      setScheduledMessagesOpen(false);
       setMessages([]);
       setReplyingTo(null);
       setMessagePagination({
@@ -2681,7 +2718,13 @@ export default function ConversationsPage() {
   }
 
   return (
-    <main className="inbox-screen inbox-screen--contained">
+    <main
+      className={
+        selectedTicket
+          ? "inbox-screen inbox-screen--contained inbox-screen--conversation-open"
+          : "inbox-screen inbox-screen--contained"
+      }
+    >
       <header className="inbox-topbar">
         <div>
           <button
@@ -2737,7 +2780,13 @@ export default function ConversationsPage() {
         </div>
       )}
 
-      <section className="inbox">
+      <section
+        className={
+          selectedTicket
+            ? "inbox inbox--conversation-open"
+            : "inbox"
+        }
+      >
         <aside className="ticket-list">
           <div className="ticket-list__heading ticket-list__heading--filters">
             <div className="ticket-list__title-row">
@@ -4586,6 +4635,35 @@ export default function ConversationsPage() {
                   </div>
                 )}
 
+                {scheduledMessagesOpen && (
+                  <ScheduledMessageDrawer
+                    contactName={
+                      selectedTicket.contact.name
+                    }
+                    draftText={
+                      text
+                    }
+                    onClose={() =>
+                      setScheduledMessagesOpen(
+                        false
+                      )
+                    }
+                    onScheduled={() => {
+                      setText("");
+                      setReplyingTo(null);
+                      setScheduledMessagesOpen(
+                        false
+                      );
+                      setOperationNotice(
+                        "Mensagem agendada com sucesso."
+                      );
+                    }}
+                    ticketId={
+                      selectedTicket.id
+                    }
+                  />
+                )}
+
                 <form
                   className="conversation-composer conversation-composer--attachments conversation-composer--voice conversation-composer--quick-replies"
                   onSubmit={handleSend}
@@ -4718,6 +4796,35 @@ export default function ConversationsPage() {
                       </button>
                     </div>
                   )}
+
+                  <button
+                    aria-label="Agendar mensagem"
+                    className={
+                      scheduledMessagesOpen
+                        ? "composer__schedule composer__schedule--active"
+                        : "composer__schedule"
+                    }
+                    disabled={
+                      sending ||
+                      recording ||
+                      !!attachment ||
+                      !!replyingTo
+                    }
+                    onClick={() =>
+                      setScheduledMessagesOpen(
+                        current =>
+                          !current
+                      )
+                    }
+                    title={
+                      replyingTo
+                        ? "Respostas citadas não podem ser agendadas no P2.5"
+                        : "Agendar mensagem"
+                    }
+                    type="button"
+                  >
+                    ◷
+                  </button>
 
                   <button
                     aria-label="Respostas rápidas"

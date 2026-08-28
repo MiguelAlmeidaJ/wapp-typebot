@@ -6,9 +6,12 @@ import {
   useEffect,
   useState
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/components/auth-provider";
+import { ContactCrmPanel } from "@/components/contacts/contact-crm-panel";
+import { ContactPipelineSummary } from "@/components/contacts/contact-pipeline-summary";
+import { ContactTasksPanel } from "@/components/contacts/contact-tasks-panel";
 import { ApiError } from "@/lib/api";
 
 type ContactFilter =
@@ -122,6 +125,11 @@ function initials(name: string) {
 
 export default function ContactsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const targetContactId =
+    searchParams.get(
+      "contact"
+    );
   const {
     session,
     loading,
@@ -187,6 +195,12 @@ export default function ContactsPage() {
 
       setSelectedId(current => {
         if (
+          targetContactId
+        ) {
+          return targetContactId;
+        }
+
+        if (
           current &&
           payload.contacts.some(
             contact => contact.id === current
@@ -204,7 +218,7 @@ export default function ContactsPage() {
     } finally {
       setLoadingList(false);
     }
-  }, [filter, page, request, search]);
+  }, [filter, page, request, search, targetContactId]);
 
   const loadDetail = useCallback(
     async (contactId: string) => {
@@ -255,6 +269,26 @@ export default function ContactsPage() {
 
     return () => window.clearTimeout(timer);
   }, [loadContacts, session]);
+
+  useEffect(() => {
+    if (
+      targetContactId &&
+      detail?.id ===
+        targetContactId
+    ) {
+      router.replace(
+        "/dashboard/contacts",
+        {
+          scroll:
+            false
+        }
+      );
+    }
+  }, [
+    detail?.id,
+    router,
+    targetContactId
+  ]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -641,6 +675,30 @@ export default function ContactsPage() {
                   </button>
                 </div>
               </form>
+
+              <ContactTasksPanel
+                contactId={
+                  detail.id
+                }
+                contactName={
+                  detail.name
+                }
+              />
+
+              <ContactPipelineSummary
+                contactId={
+                  detail.id
+                }
+              />
+
+              <ContactCrmPanel
+                contactId={
+                  detail.id
+                }
+                contactName={
+                  detail.name
+                }
+              />
 
               <section className="contact-history">
                 <div className="contact-history__heading">

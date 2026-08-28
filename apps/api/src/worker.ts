@@ -1,5 +1,19 @@
 import { prisma } from "./lib/database.js";
 import {
+  createTaskReminderWorker
+} from "./jobs/task-reminder.worker.js";
+import {
+  closeTaskReminderQueue,
+  ensureTaskReminderSweep
+} from "./jobs/task-reminder.queue.js";
+import {
+  createScheduledMessageWorker
+} from "./jobs/scheduled-message.worker.js";
+import {
+  closeScheduledMessageQueue,
+  ensureScheduledMessageSweep
+} from "./jobs/scheduled-message.queue.js";
+import {
   createAutomationWorker
 } from "./jobs/automation.worker.js";
 import {
@@ -25,10 +39,14 @@ import {
 const workers = [
   createMediaCaptureWorker(),
   createMaintenanceWorker(),
-  createAutomationWorker()
+  createAutomationWorker(),
+  createScheduledMessageWorker(),
+  createTaskReminderWorker()
 ];
 
 await ensureMaintenanceSchedule();
+await ensureScheduledMessageSweep();
+await ensureTaskReminderSweep();
 
 console.info(
   "[jobs] Wapp workers started",
@@ -65,7 +83,9 @@ async function shutdown(
   await Promise.all([
     closeMediaCaptureQueue(),
     closeMaintenanceQueue(),
-    closeAutomationQueue()
+    closeAutomationQueue(),
+    closeScheduledMessageQueue(),
+    closeTaskReminderQueue()
   ]);
 
   await closeRealtimeTransport();

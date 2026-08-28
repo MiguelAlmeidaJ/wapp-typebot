@@ -39,6 +39,15 @@ export async function realtimeRoutes(app: FastifyInstance) {
     });
 
     const send = (event: RealtimeEvent) => {
+      if (
+        event.type ===
+          "notification.created" &&
+        event.membershipId !==
+          auth.membershipId
+      ) {
+        return;
+      }
+
       reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
     };
 

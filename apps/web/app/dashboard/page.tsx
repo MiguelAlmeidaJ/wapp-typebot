@@ -51,6 +51,21 @@ const navigation: Array<{
     permission: "contacts.view"
   },
   {
+    label: "Pipeline",
+    href: "/dashboard/pipeline",
+    permission: "pipeline.view"
+  },
+  {
+    label: "Tarefas",
+    href: "/dashboard/tasks",
+    permission: "tasks.view"
+  },
+  {
+    label: "Relatórios",
+    href: "/dashboard/reports",
+    permission: "reports.view"
+  },
+  {
     label: "Filas",
     href: "/dashboard/queues",
     permission: "queues.manage"

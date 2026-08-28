@@ -7421,3 +7421,3324 @@ button:disabled {
 }
 
 /* --- /WAPP P2.4 ------------------------------------------------------- */
+
+/* --- WAPP P2.5 / SCHEDULED MESSAGES ---------------------------------- */
+
+.composer__schedule {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.composer__schedule:hover,
+.composer__schedule--active {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.composer__schedule:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.scheduled-message-drawer {
+  max-height: min(440px, 48vh);
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.98);
+  padding: 14px 16px;
+}
+
+.scheduled-message-drawer__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.scheduled-message-drawer__header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.scheduled-message-drawer__header strong {
+  font-size: 13px;
+}
+
+.scheduled-message-drawer__header small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.scheduled-message-drawer__header > button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.scheduled-message-drawer__header > button:hover {
+  background: var(--surface-subtle);
+  color: var(--ink);
+}
+
+.scheduled-message-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.scheduled-message-form label {
+  display: grid;
+  gap: 4px;
+}
+
+.scheduled-message-form label > span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 740;
+}
+
+.scheduled-message-form textarea,
+.scheduled-message-form input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  outline: 0;
+  background: white;
+  padding: 8px 9px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 10px;
+}
+
+.scheduled-message-form textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.scheduled-message-form input {
+  height: 36px;
+}
+
+.scheduled-message-form textarea:focus,
+.scheduled-message-form input:focus {
+  border-color: rgba(31, 122, 80, 0.36);
+  box-shadow: 0 0 0 3px rgba(31, 122, 80, 0.05);
+}
+
+.scheduled-message-form__footer {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.scheduled-message-form__footer small {
+  max-width: 600px;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.scheduled-message-feedback {
+  margin-top: 9px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  padding: 8px 9px;
+  font-size: 9px;
+}
+
+.scheduled-message-feedback--error {
+  background: rgba(163, 59, 50, 0.08);
+  color: #973a32;
+}
+
+.scheduled-message-list {
+  margin-top: 13px;
+  border-top: 1px solid var(--line);
+  padding-top: 11px;
+}
+
+.scheduled-message-list__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+}
+
+.scheduled-message-list__heading strong {
+  font-size: 10px;
+}
+
+.scheduled-message-list__heading > span {
+  display: grid;
+  min-width: 22px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-subtle);
+  color: var(--muted);
+  padding: 0 6px;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.scheduled-message-item {
+  display: grid;
+  gap: 5px;
+  border-bottom: 1px solid #edf0ed;
+  padding: 9px 1px;
+}
+
+.scheduled-message-item:last-child {
+  border-bottom: 0;
+}
+
+.scheduled-message-item__top,
+.scheduled-message-item__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.scheduled-message-item__top > span {
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  padding: 4px 7px;
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.scheduled-message-item--failed
+  .scheduled-message-item__top
+  > span {
+  background: rgba(163, 59, 50, 0.08);
+  color: #973a32;
+}
+
+.scheduled-message-item--cancelled {
+  opacity: 0.55;
+}
+
+.scheduled-message-item__top time,
+.scheduled-message-item__meta > span {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.scheduled-message-item p {
+  overflow: hidden;
+  margin: 0;
+  color: #425047;
+  font-size: 9px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scheduled-message-item__meta button {
+  border: 0;
+  background: transparent;
+  color: #973a32;
+  padding: 0;
+  font-size: 8px;
+  font-weight: 740;
+  cursor: pointer;
+}
+
+.scheduled-message-item__error {
+  color: #973a32;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.scheduled-message-empty {
+  color: var(--muted);
+  padding: 12px 0 4px;
+  font-size: 9px;
+}
+
+@media (max-width: 720px) {
+  .scheduled-message-form {
+    grid-template-columns: 1fr;
+  }
+
+  .scheduled-message-form__footer {
+    grid-column: auto;
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+/* --- /WAPP P2.5 ------------------------------------------------------ */
+
+/* --- WAPP P2.6 / MANAGEMENT REPORTS ---------------------------------- */
+
+.management-reports {
+  min-height: 100vh;
+  padding: 34px clamp(24px, 5vw, 72px) 64px;
+  background: var(--surface-subtle);
+}
+
+.management-reports__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 18px;
+}
+
+.management-reports__header h1 {
+  margin: 7px 0 7px;
+  font-size: clamp(34px, 4vw, 48px);
+  letter-spacing: -0.05em;
+}
+
+.management-reports__header p {
+  max-width: 670px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.management-report-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.management-report-filters label {
+  display: grid;
+  gap: 4px;
+}
+
+.management-report-filters label > span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 750;
+}
+
+.management-report-filters select {
+  min-width: 180px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  outline: 0;
+  background: white;
+  padding: 0 9px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 9px;
+}
+
+.management-period-switch {
+  display: flex;
+  height: 34px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+  padding: 3px;
+}
+
+.management-period-switch__item {
+  min-width: 44px;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.management-period-switch__item--active {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.management-report-loading {
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: white;
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.management-state-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: white;
+}
+
+.management-state-strip > div {
+  display: grid;
+  gap: 2px;
+  border-right: 1px solid var(--line);
+  padding: 12px 15px;
+}
+
+.management-state-strip > div:last-child {
+  border-right: 0;
+}
+
+.management-state-strip span {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.management-state-strip strong {
+  font-size: 19px;
+  letter-spacing: -0.04em;
+}
+
+.management-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.management-summary-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: white;
+  padding: 14px 15px;
+}
+
+.management-summary-card > span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.management-summary-card > strong {
+  font-size: 24px;
+  letter-spacing: -0.045em;
+}
+
+.management-summary-card > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.management-summary-card small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-change {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 3px 6px;
+  font-size: 7px;
+  font-weight: 780;
+}
+
+.report-change--good {
+  background: rgba(31, 122, 80, 0.08);
+  color: var(--accent-dark);
+}
+
+.report-change--bad {
+  background: rgba(163, 59, 50, 0.08);
+  color: #973a32;
+}
+
+.report-change--neutral {
+  background: var(--surface-subtle);
+  color: var(--muted);
+}
+
+.management-report-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(250px, 0.7fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.management-report-panel {
+  overflow: hidden;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: white;
+}
+
+.management-report-layout
+  .management-report-panel {
+  margin-top: 0;
+}
+
+.management-report-panel > header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 16px;
+}
+
+.management-report-panel > header h2 {
+  margin: 3px 0 0;
+  font-size: 14px;
+  letter-spacing: -0.025em;
+}
+
+.management-report-panel__note {
+  max-width: 430px;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.management-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.management-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.management-chart-legend i {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: #b7c0ba;
+}
+
+.management-chart-legend span:last-child i {
+  background: var(--accent-dark);
+}
+
+.management-trend-chart {
+  display: flex;
+  height: 210px;
+  align-items: stretch;
+  gap: clamp(2px, 0.4vw, 7px);
+  padding: 20px 16px 13px;
+}
+
+.management-trend-day {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 0;
+  grid-template-rows: minmax(0, 1fr) 15px;
+  gap: 5px;
+}
+
+.management-trend-day__bars {
+  display: flex;
+  min-height: 0;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+}
+
+.management-trend-day__bars span {
+  width: min(8px, 45%);
+  border-radius: 3px 3px 1px 1px;
+  background: #b7c0ba;
+}
+
+.management-trend-day__bars span:last-child {
+  background: var(--accent-dark);
+}
+
+.management-trend-day small {
+  overflow: visible;
+  color: var(--muted);
+  font-size: 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.management-health-list {
+  display: grid;
+  padding: 5px 15px 8px;
+}
+
+.management-health-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #edf0ed;
+  padding: 10px 1px;
+}
+
+.management-health-list > div:last-child {
+  border-bottom: 0;
+}
+
+.management-health-list span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.management-health-list strong {
+  font-size: 11px;
+}
+
+.management-report-panel--health > p {
+  margin: 0;
+  border-top: 1px solid var(--line);
+  background: #fafbfa;
+  padding: 11px 15px;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.management-report-table {
+  overflow-x: auto;
+}
+
+.management-report-table__row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.4fr) repeat(6, minmax(82px, 0.7fr));
+  min-width: 760px;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #edf0ed;
+  padding: 10px 16px;
+}
+
+.management-report-table__row:last-child {
+  border-bottom: 0;
+}
+
+.management-report-table__row--head {
+  background: #fafbfa;
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 760;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.management-report-table__row:not(
+  .management-report-table__row--head
+) {
+  font-size: 9px;
+}
+
+.management-report-table__row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.management-agent-list {
+  display: grid;
+}
+
+.management-agent-row {
+  display: grid;
+  grid-template-columns: minmax(210px, 1.4fr) repeat(3, minmax(110px, 0.6fr));
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid #edf0ed;
+  padding: 11px 16px;
+}
+
+.management-agent-row:last-child {
+  border-bottom: 0;
+}
+
+.management-agent-row__identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.management-agent-row__identity > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.management-agent-row__identity > div,
+.management-agent-row > div:not(
+  .management-agent-row__identity
+) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.management-agent-row__identity strong {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.management-agent-row span,
+.management-agent-row small {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.management-agent-row
+  > div:not(
+    .management-agent-row__identity
+  )
+  > strong {
+  font-size: 12px;
+}
+
+.management-agent-row .report-change {
+  width: fit-content;
+  padding: 0;
+  background: transparent;
+}
+
+.management-report-empty {
+  padding: 28px 16px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: center;
+}
+
+@media (max-width: 1050px) {
+  .management-reports__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .management-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .management-report-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .management-reports {
+    padding: 22px 14px 44px;
+  }
+
+  .management-report-filters {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .management-report-filters select {
+    width: 100%;
+  }
+
+  .management-period-switch {
+    width: 100%;
+  }
+
+  .management-period-switch__item {
+    flex: 1 1 0;
+  }
+
+  .management-state-strip,
+  .management-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .management-state-strip > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .management-state-strip > div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .management-agent-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .management-agent-row__identity {
+    grid-column: 1 / -1;
+  }
+
+  .management-report-panel__note {
+    display: none;
+  }
+}
+
+/* --- /WAPP P2.6 ------------------------------------------------------ */
+
+/* --- WAPP P2.7 / NOTIFICATION CENTER --------------------------------- */
+
+.notification-center {
+  position: fixed;
+  top: 78px;
+  right: 18px;
+  z-index: 240;
+}
+
+.notification-center__trigger {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 22px rgba(24, 39, 30, 0.06);
+  padding: 0 10px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 8px;
+  font-weight: 760;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.notification-center__trigger:hover,
+.notification-center--open
+  .notification-center__trigger {
+  border-color: rgba(31, 122, 80, 0.24);
+  color: var(--accent-dark);
+}
+
+.notification-center__trigger strong {
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--accent-dark);
+  padding: 0 5px;
+  color: white;
+  font-size: 7px;
+}
+
+.notification-center__panel {
+  position: absolute;
+  top: 39px;
+  right: 0;
+  width: min(370px, calc(100vw - 28px));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.99);
+  box-shadow: 0 22px 60px rgba(22, 37, 28, 0.14);
+  backdrop-filter: blur(18px);
+}
+
+.notification-center__panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--line);
+  padding: 13px 14px;
+}
+
+.notification-center__panel > header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.notification-center__panel > header strong {
+  font-size: 12px;
+}
+
+.notification-center__panel
+  > header
+  > button {
+  border: 0;
+  background: transparent;
+  color: var(--accent-dark);
+  padding: 3px 0;
+  font-size: 7px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.notification-browser-optin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  background: #fafbfa;
+  padding: 10px 14px;
+}
+
+.notification-browser-optin > div {
+  display: grid;
+  gap: 2px;
+}
+
+.notification-browser-optin strong {
+  font-size: 8px;
+}
+
+.notification-browser-optin span {
+  color: var(--muted);
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.notification-browser-optin button {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: white;
+  padding: 5px 8px;
+  color: var(--accent-dark);
+  font-size: 7px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.notification-browser-optin button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.notification-center__error {
+  border-bottom: 1px solid rgba(163, 59, 50, 0.12);
+  background: rgba(163, 59, 50, 0.06);
+  padding: 8px 14px;
+  color: #973a32;
+  font-size: 8px;
+}
+
+.notification-center__list {
+  max-height: min(480px, calc(100vh - 190px));
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.notification-item {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 7px minmax(0, 1fr);
+  gap: 8px;
+  border: 0;
+  border-bottom: 1px solid #edf0ed;
+  background: white;
+  padding: 11px 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notification-item:last-child {
+  border-bottom: 0;
+}
+
+.notification-item:hover {
+  background: #fafbfa;
+}
+
+.notification-item--unread {
+  background: rgba(31, 122, 80, 0.035);
+}
+
+.notification-item__indicator {
+  width: 6px;
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.notification-item--unread
+  .notification-item__indicator {
+  background: var(--accent-dark);
+}
+
+.notification-item__copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.notification-item__copy > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.notification-item__copy strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-item__copy time,
+.notification-item__copy small {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.notification-item__copy p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #59635d;
+  font-size: 8px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.notification-center__empty {
+  padding: 30px 16px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .notification-center {
+    top: 66px;
+    right: 12px;
+  }
+
+  .notification-center__panel {
+    width: min(360px, calc(100vw - 24px));
+  }
+}
+
+/* --- /WAPP P2.7 ------------------------------------------------------ */
+
+/* --- WAPP P2.8 / RESPONSIVE PRODUCT PASS ----------------------------- */
+
+/*
+ * Tablet: keep the two-pane inbox, but reduce the fixed list width and let
+ * operational controls scroll instead of crushing the conversation.
+ */
+@media (max-width: 1080px) {
+  .inbox-screen--contained {
+    padding-inline: 14px;
+  }
+
+  .inbox {
+    grid-template-columns: minmax(270px, 32vw) minmax(0, 1fr);
+  }
+
+  .inbox-topbar {
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .inbox-topbar__right {
+    display: flex;
+    max-width: 58vw;
+    overflow-x: auto;
+    align-items: center;
+    gap: 6px;
+    padding-bottom: 3px;
+    scrollbar-width: thin;
+  }
+
+  .inbox-topbar__right > * {
+    flex: 0 0 auto;
+  }
+
+  .conversation-home-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .conversation-home-side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .conversation-overview-note {
+    grid-column: 1 / -1;
+  }
+
+  .assignment-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .assignment-bar > * {
+    flex: 0 0 auto;
+  }
+}
+
+/*
+ * Phone: the inbox becomes a true one-screen flow.
+ *
+ * No selected ticket:
+ *   ticket-list = visible
+ *   conversation-panel = hidden
+ *
+ * Selected ticket:
+ *   ticket-list = hidden
+ *   conversation-panel = full viewport
+ */
+@media (max-width: 760px) {
+  html,
+  body {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  button,
+  [role="button"],
+  .primary-button,
+  .secondary-button,
+  .ghost-button,
+  .connections-back {
+    touch-action: manipulation;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .inbox-screen--contained {
+    display: flex;
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+    background: var(--surface-subtle);
+  }
+
+  .inbox-topbar {
+    display: flex;
+    min-height: 62px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    overflow: hidden;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.96);
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px;
+    backdrop-filter: blur(14px);
+  }
+
+  .inbox-topbar > div:first-child {
+    min-width: 0;
+  }
+
+  .inbox-topbar .connections-back {
+    min-height: 34px;
+    padding-inline: 8px;
+  }
+
+  .inbox-topbar .eyebrow {
+    display: none;
+  }
+
+  .inbox-topbar h1 {
+    margin: 2px 0 0;
+    font-size: 21px;
+    letter-spacing: -0.04em;
+  }
+
+  .inbox-topbar__right {
+    display: flex;
+    max-width: 58vw;
+    overflow-x: auto;
+    align-items: center;
+    gap: 5px;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .inbox-topbar__right::-webkit-scrollbar {
+    display: none;
+  }
+
+  .inbox-topbar__right > span {
+    display: none;
+  }
+
+  .inbox-topbar__right .ghost-button {
+    min-height: 34px;
+    flex: 0 0 auto;
+    padding-inline: 9px;
+    font-size: 8px;
+  }
+
+  .inbox-screen--conversation-open .inbox-topbar {
+    display: none;
+  }
+
+  .inbox-error,
+  .inbox-notice {
+    flex: 0 0 auto;
+    margin: 7px 8px 0;
+  }
+
+  .inbox {
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(0, 1fr);
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .ticket-list {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 0;
+    background: white;
+  }
+
+  .ticket-list__heading {
+    flex: 0 0 auto;
+    padding: 12px 10px 9px;
+  }
+
+  .ticket-list__items {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ticket-item {
+    min-height: 76px;
+    padding: 11px 10px;
+  }
+
+  .ticket-item .ticket-avatar {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+
+  .inbox-status-filters {
+    display: flex;
+    overflow-x: auto;
+    gap: 5px;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .inbox-status-filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .inbox-status-chip {
+    min-height: 34px;
+    flex: 0 0 auto;
+    padding-inline: 10px;
+  }
+
+  .inbox-ticket-search input,
+  .inbox-advanced-filters select {
+    min-height: 42px;
+  }
+
+  .inbox-advanced-filters__body {
+    grid-template-columns: 1fr;
+  }
+
+  .conversation-panel {
+    display: none;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    background: white;
+  }
+
+  .inbox--conversation-open .ticket-list {
+    display: none;
+  }
+
+  .inbox--conversation-open .conversation-panel {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  /*
+   * Mobile intentionally does not render the duplicate desktop overview.
+   * The ticket list itself is the mobile home.
+   */
+  .inbox:not(.inbox--conversation-open) .conversation-panel {
+    display: none;
+  }
+
+  .chat-header {
+    min-width: 0;
+    min-height: 58px;
+    flex: 0 0 auto;
+    gap: 8px;
+    border-bottom: 1px solid var(--line);
+    padding: calc(7px + env(safe-area-inset-top, 0px)) 9px 7px;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 16;
+  }
+
+  .chat-header__contact {
+    min-width: 0;
+    flex: 1 1 auto;
+    gap: 7px;
+  }
+
+  .chat-header__contact > div:last-child {
+    min-width: 0;
+  }
+
+  .chat-header__contact strong,
+  .chat-header__contact span {
+    display: block;
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chat-header__contact strong {
+    font-size: 11px;
+  }
+
+  .chat-header__contact span {
+    font-size: 8px;
+  }
+
+  .chat-header .ticket-avatar {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+  }
+
+  .conversation-home-back {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    place-items: center;
+    border-radius: 10px;
+    font-size: 16px;
+  }
+
+  .chat-header__actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 5px;
+  }
+
+  .chat-header__actions .primary-button,
+  .chat-header__actions .ghost-button {
+    min-height: 38px;
+    padding-inline: 9px;
+    font-size: 8px;
+  }
+
+  .assignment-bar {
+    display: flex;
+    min-width: 0;
+    min-height: 52px;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 6px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    border-bottom: 1px solid var(--line);
+    padding: 6px 9px;
+    scrollbar-width: none;
+  }
+
+  .assignment-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .assignment-bar > div:not(.selected-ticket-tags) {
+    width: 150px;
+    flex: 0 0 150px;
+  }
+
+  .assignment-bar select {
+    width: 100%;
+    min-height: 38px;
+  }
+
+  .assignment-bar > button {
+    min-height: 38px;
+    flex: 0 0 auto;
+    padding-inline: 10px;
+  }
+
+  .assignment-bar > small {
+    display: none;
+  }
+
+  .selected-ticket-tags {
+    display: flex;
+    max-width: 220px;
+    overflow-x: auto;
+    flex: 0 0 auto;
+    gap: 4px;
+    scrollbar-width: none;
+  }
+
+  .conversation-body {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .conversation-scroll {
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    padding: 12px 9px 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .message-row {
+    width: 100%;
+    padding-inline: 0;
+  }
+
+  .message-bubble {
+    max-width: min(88vw, 560px);
+  }
+
+  .message-bubble--media {
+    max-width: min(90vw, 560px);
+  }
+
+  .message-quoted-preview {
+    max-width: 100%;
+  }
+
+  .message-meta {
+    gap: 5px;
+  }
+
+  .message-reaction-trigger,
+  .message-reply-action,
+  .message-reaction-option {
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .message-reaction-picker {
+    max-width: calc(100vw - 28px);
+  }
+
+  /*
+   * Composer remains outside .conversation-scroll. This is the important
+   * P1.2f invariant and gives the phone a stable messaging surface.
+   */
+  .conversation-composer {
+    position: relative;
+    inset: auto;
+    min-width: 0;
+    flex: 0 0 auto;
+    gap: 6px;
+    border-top: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.99);
+    padding: 8px 9px
+      calc(8px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 24px rgba(28, 43, 34, 0.045);
+    z-index: 14;
+  }
+
+  .conversation-composer textarea {
+    min-width: 0;
+    min-height: 42px;
+    max-height: 112px;
+    font-size: 16px;
+    line-height: 1.35;
+  }
+
+  .conversation-composer button,
+  .conversation-composer .composer__schedule {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .composer-replying,
+  .attachment-preview,
+  .voice-note-preview {
+    max-width: 100%;
+  }
+
+  /*
+   * Conversation tools become viewport sheets. They remain children of
+   * .conversation-body, so no second page-level scroll is introduced.
+   */
+  .ticket-history-drawer,
+  .sla-monitor-drawer,
+  .closed-tickets-drawer,
+  .conversation-search,
+  .tag-manager,
+  .quick-reply-manager,
+  .ticket-notes-drawer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    overflow-y: auto;
+    border: 0;
+    border-radius: 0;
+    background: white;
+    z-index: 36;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ticket-tag-picker {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    top: auto;
+    width: auto;
+    max-width: none;
+    max-height: min(66dvh, 520px);
+    overflow-y: auto;
+    border-radius: 16px;
+    box-shadow: 0 18px 50px rgba(22, 37, 28, 0.18);
+    z-index: 38;
+  }
+
+  .scheduled-message-drawer {
+    max-height: min(58dvh, 520px);
+    flex: 0 0 auto;
+    padding: 11px 10px;
+  }
+
+  .scheduled-message-form {
+    grid-template-columns: 1fr;
+  }
+
+  .scheduled-message-form__footer {
+    grid-column: auto;
+  }
+
+  /*
+   * Global dashboard becomes a bottom-navigation workspace on phones.
+   * Existing role filtering still controls which nav items exist.
+   */
+  .workspace {
+    display: block;
+    min-height: 100dvh;
+    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .workspace__content {
+    min-width: 0;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: auto;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: 8px;
+    width: auto;
+    height: 56px;
+    min-height: 0;
+    z-index: 220;
+    flex-direction: row;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 14px 42px rgba(22, 37, 28, 0.14);
+    padding: 4px;
+    backdrop-filter: blur(16px);
+  }
+
+  .sidebar__top {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .sidebar__top > :not(.sidebar__nav) {
+    display: none;
+  }
+
+  .sidebar__nav {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow-x: auto;
+    align-items: stretch;
+    gap: 2px;
+    scrollbar-width: none;
+  }
+
+  .sidebar__nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-item {
+    min-width: 86px;
+    min-height: 46px;
+    flex: 1 0 86px;
+    justify-content: center;
+    border-radius: 12px;
+    padding: 0 9px;
+    font-size: 8px;
+    text-align: center;
+  }
+
+  .nav-item__dot,
+  .sidebar__user {
+    display: none;
+  }
+
+  .topbar {
+    min-height: 52px;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px;
+  }
+
+  .dashboard {
+    padding: 16px 12px 28px;
+  }
+
+  .dashboard__intro {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .dashboard__intro h1 {
+    font-size: 28px;
+  }
+
+  .dashboard-grid,
+  .dashboard-grid--single {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    min-width: 0;
+  }
+
+  /*
+   * P2.6 reports already had a responsive pass; this closes touch/safe-area
+   * details and prevents tables from widening the document.
+   */
+  .management-reports {
+    max-width: 100vw;
+    overflow-x: hidden;
+    padding-bottom:
+      calc(82px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .management-report-panel,
+  .management-report-table {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .management-report-table {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .management-trend-chart {
+    min-width: 560px;
+  }
+
+  .management-report-panel--trend {
+    overflow-x: auto;
+  }
+
+  /*
+   * P2.7 notification center stays above bottom navigation and opens within
+   * the physical phone width.
+   */
+  .notification-center {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    right: 10px;
+  }
+
+  .notification-center__trigger {
+    min-height: 38px;
+  }
+
+  .notification-center__panel {
+    position: fixed;
+    top: calc(54px + env(safe-area-inset-top, 0px));
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-height:
+      calc(
+        100dvh -
+        72px -
+        env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
+      );
+  }
+
+  .notification-center__list {
+    max-height:
+      calc(
+        100dvh -
+        205px -
+        env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
+      );
+  }
+
+  .notification-item {
+    min-height: 66px;
+    padding: 11px 12px;
+  }
+
+  /*
+   * Shared administration forms: no horizontal document overflow and touch
+   * controls large enough to operate without precision tapping.
+   */
+  .connections-back,
+  .primary-button,
+  .secondary-button,
+  .ghost-button {
+    min-height: 40px;
+  }
+
+  main {
+    max-width: 100vw;
+  }
+}
+
+@media (max-width: 430px) {
+  .chat-header__actions .ghost-button {
+    max-width: 74px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .assignment-bar > div:not(.selected-ticket-tags) {
+    width: 136px;
+    flex-basis: 136px;
+  }
+
+  .message-bubble,
+  .message-bubble--media {
+    max-width: 92vw;
+  }
+
+  .management-state-strip,
+  .management-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .management-agent-row {
+    grid-template-columns: 1fr;
+  }
+
+  .management-agent-row__identity {
+    grid-column: auto;
+  }
+}
+
+@media (
+  max-width: 900px
+) and (
+  max-height: 600px
+) and (
+  orientation: landscape
+) {
+  .inbox-screen--conversation-open .chat-header {
+    min-height: 50px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  .assignment-bar {
+    min-height: 46px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .conversation-composer {
+    padding-top: 5px;
+    padding-bottom:
+      calc(5px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ticket-history-drawer,
+  .sla-monitor-drawer,
+  .closed-tickets-drawer,
+  .conversation-search,
+  .tag-manager,
+  .quick-reply-manager,
+  .ticket-notes-drawer {
+    overscroll-behavior: contain;
+  }
+}
+
+/* --- /WAPP P2.8 ------------------------------------------------------ */
+
+/* --- WAPP P3.1 / CONTACT 360 CRM ------------------------------------- */
+
+.contact-crm {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: white;
+}
+
+.contact-crm__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 16px;
+}
+
+.contact-crm__header h3 {
+  margin: 3px 0 2px;
+  font-size: 15px;
+  letter-spacing: -0.025em;
+}
+
+.contact-crm__header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.contact-crm__feedback {
+  margin: 10px 14px 0;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  padding: 8px 9px;
+  font-size: 8px;
+}
+
+.contact-crm__feedback--error {
+  background: rgba(163, 59, 50, 0.07);
+  color: #973a32;
+}
+
+.contact-field-manager {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  background: #fafbfa;
+  padding: 13px 14px;
+}
+
+.contact-field-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(130px, 0.7fr);
+  gap: 9px;
+}
+
+.contact-field-form label {
+  display: grid;
+  gap: 4px;
+}
+
+.contact-field-form label > span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 740;
+}
+
+.contact-field-form input,
+.contact-field-form select,
+.contact-custom-fields input,
+.contact-custom-fields select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: 0;
+  background: white;
+  padding: 7px 8px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 9px;
+}
+
+.contact-field-form__options {
+  grid-column: 1 / -1;
+}
+
+.contact-field-form__check {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+}
+
+.contact-field-form__check input {
+  width: 15px;
+  min-height: 15px;
+}
+
+.contact-field-form .primary-button {
+  width: fit-content;
+}
+
+.contact-field-admin-list {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+}
+
+.contact-field-admin-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+  padding: 8px 9px;
+}
+
+.contact-field-admin-item--inactive {
+  opacity: 0.55;
+}
+
+.contact-field-admin-item > div {
+  display: grid;
+  gap: 2px;
+}
+
+.contact-field-admin-item strong {
+  font-size: 9px;
+}
+
+.contact-field-admin-item span {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.contact-field-admin-item button {
+  border: 0;
+  background: transparent;
+  color: var(--accent-dark);
+  font-size: 7px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.contact-crm__grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
+  min-height: 340px;
+}
+
+.contact-custom-fields {
+  display: grid;
+  align-content: start;
+  gap: 11px;
+  border-right: 1px solid var(--line);
+  padding: 14px;
+}
+
+.contact-custom-fields > header,
+.contact-timeline > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.contact-custom-fields > header strong,
+.contact-timeline > header strong {
+  font-size: 10px;
+}
+
+.contact-custom-fields > header span,
+.contact-timeline > header span {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.contact-custom-fields__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.contact-custom-fields .field {
+  display: grid;
+  gap: 4px;
+}
+
+.contact-custom-fields .field > span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 720;
+}
+
+.contact-custom-fields .primary-button {
+  width: fit-content;
+}
+
+.contact-timeline {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 14px 0 0;
+}
+
+.contact-timeline > header {
+  flex: 0 0 auto;
+  padding: 0 14px 10px;
+}
+
+.contact-timeline__list {
+  max-height: 420px;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+  scrollbar-width: thin;
+}
+
+.contact-timeline-item {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 8px;
+  border: 0;
+  border-bottom: 1px solid #edf0ed;
+  background: white;
+  padding: 10px 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.contact-timeline-item:hover {
+  background: #fafbfa;
+}
+
+.contact-timeline-item__dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: #b8c0bb;
+}
+
+.contact-timeline-item--message
+  .contact-timeline-item__dot {
+  background: var(--accent-dark);
+}
+
+.contact-timeline-item--note
+  .contact-timeline-item__dot {
+  background: #b78a3d;
+}
+
+.contact-timeline-item > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.contact-timeline-item__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.contact-timeline-item__heading strong {
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contact-timeline-item__heading time,
+.contact-timeline-item small {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.contact-timeline-item p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #59635d;
+  font-size: 8px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.contact-crm__empty {
+  padding: 16px 4px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+@media (max-width: 900px) {
+  .contact-field-manager,
+  .contact-crm__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-custom-fields {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 760px) {
+  .contact-crm__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .contact-field-form,
+  .contact-custom-fields__list {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-field-form__options {
+    grid-column: auto;
+  }
+
+  .contact-field-form input,
+  .contact-field-form select,
+  .contact-custom-fields input,
+  .contact-custom-fields select {
+    min-height: 42px;
+    font-size: 16px;
+  }
+
+  .contact-timeline__list {
+    max-height: 52dvh;
+  }
+
+  .contact-timeline-item {
+    min-height: 62px;
+  }
+}
+
+/* --- /WAPP P3.1 ------------------------------------------------------ */
+
+/* --- WAPP P3.2 / CRM PIPELINES --------------------------------------- */
+
+.pipeline-screen {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: var(--surface-subtle);
+  padding: 32px clamp(18px, 4vw, 56px) 54px;
+}
+
+.pipeline-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.pipeline-header h1 {
+  margin: 6px 0 5px;
+  font-size: clamp(32px, 4vw, 48px);
+  letter-spacing: -0.05em;
+}
+
+.pipeline-header p {
+  max-width: 650px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.pipeline-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.pipeline-header__actions select,
+.pipeline-toolbar input,
+.pipeline-manager input,
+.pipeline-manager select,
+.pipeline-card select,
+.contact-pipeline-summary select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: 0;
+  background: white;
+  padding: 7px 8px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 9px;
+}
+
+.pipeline-feedback {
+  margin-top: 12px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  padding: 9px 10px;
+  font-size: 8px;
+}
+
+.pipeline-feedback--error {
+  background: rgba(163, 59, 50, 0.07);
+  color: #973a32;
+}
+
+.pipeline-manager {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.7fr) minmax(0, 1.3fr);
+  gap: 12px;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: white;
+  padding: 13px;
+}
+
+.pipeline-create-form,
+.pipeline-stage-manager > form {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.pipeline-create-form > strong,
+.pipeline-stage-manager > form > strong {
+  font-size: 10px;
+}
+
+.pipeline-manager input,
+.pipeline-manager select {
+  min-height: 36px;
+}
+
+.pipeline-manager .primary-button {
+  width: fit-content;
+}
+
+.pipeline-stage-manager {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.7fr) minmax(0, 1.3fr);
+  gap: 12px;
+}
+
+.pipeline-stage-admin-list {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+}
+
+.pipeline-stage-admin-item {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.pipeline-stage-admin-item--inactive {
+  opacity: 0.5;
+}
+
+.pipeline-stage-admin-item > div {
+  display: grid;
+  gap: 2px;
+}
+
+.pipeline-stage-admin-item strong {
+  font-size: 9px;
+}
+
+.pipeline-stage-admin-item small {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.pipeline-stage-admin-item button {
+  border: 0;
+  background: transparent;
+  color: var(--accent-dark);
+  font-size: 7px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.pipeline-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.pipeline-toolbar input {
+  width: min(380px, 100%);
+  min-height: 38px;
+}
+
+.pipeline-toolbar > span {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.pipeline-loading,
+.pipeline-empty-state {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: white;
+  padding: 28px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.pipeline-empty-state strong {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.pipeline-empty-state p {
+  margin: 0;
+  font-size: 9px;
+}
+
+.pipeline-board {
+  display: flex;
+  min-height: 520px;
+  gap: 10px;
+  overflow-x: auto;
+  align-items: flex-start;
+  margin-top: 11px;
+  padding-bottom: 12px;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.pipeline-column {
+  width: 284px;
+  min-width: 284px;
+  max-height: calc(100dvh - 230px);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #f7f9f7;
+}
+
+.pipeline-column > header {
+  display: flex;
+  min-height: 43px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  background: white;
+  padding: 9px 10px;
+}
+
+.pipeline-column > header > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.pipeline-column > header strong {
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pipeline-column > header > span {
+  display: grid;
+  min-width: 22px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-subtle);
+  color: var(--muted);
+  padding-inline: 6px;
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.pipeline-stage-color {
+  display: block;
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 999px;
+  background: #9aa29d;
+}
+
+.pipeline-stage-color--blue {
+  background: #4f79a7;
+}
+
+.pipeline-stage-color--green {
+  background: var(--accent-dark);
+}
+
+.pipeline-stage-color--orange {
+  background: #c1803f;
+}
+
+.pipeline-stage-color--purple {
+  background: #8068a1;
+}
+
+.pipeline-stage-color--red {
+  background: #a84e49;
+}
+
+.pipeline-stage-color--gray {
+  background: #9aa29d;
+}
+
+.pipeline-column__cards {
+  max-height: calc(100dvh - 274px);
+  overflow-y: auto;
+  padding: 7px;
+  scrollbar-width: thin;
+}
+
+.pipeline-card {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 7px;
+  border: 1px solid #e3e8e4;
+  border-radius: 10px;
+  background: white;
+  padding: 9px;
+  box-shadow: 0 3px 10px rgba(28, 43, 34, 0.035);
+}
+
+.pipeline-card[draggable="true"] {
+  cursor: grab;
+}
+
+.pipeline-card--target {
+  border-color: rgba(31, 122, 80, 0.42);
+  box-shadow: 0 0 0 3px rgba(31, 122, 80, 0.08);
+}
+
+.pipeline-card__identity {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pipeline-card__identity > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.pipeline-card__identity > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.pipeline-card__identity strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pipeline-card__identity small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pipeline-card__fields {
+  display: grid;
+  gap: 2px;
+  border-top: 1px solid #edf0ed;
+  padding-top: 6px;
+}
+
+.pipeline-card__fields > span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pipeline-card__fields strong {
+  color: #465149;
+}
+
+.pipeline-card__ticket {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  border-radius: 7px;
+  background: #f7f9f7;
+  padding: 6px 7px;
+  color: var(--muted);
+  font-size: 7px;
+  cursor: pointer;
+}
+
+.pipeline-card select {
+  width: 100%;
+  min-height: 32px;
+}
+
+.pipeline-column__empty {
+  padding: 24px 10px;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.pipeline-column__truncated {
+  display: block;
+  padding: 8px;
+  color: var(--muted);
+  font-size: 7px;
+  text-align: center;
+}
+
+.contact-pipeline-summary {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: white;
+}
+
+.contact-pipeline-summary > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 11px 13px;
+}
+
+.contact-pipeline-summary > header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.contact-pipeline-summary > header strong {
+  font-size: 10px;
+}
+
+.contact-pipeline-summary__body {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+}
+
+.contact-pipeline-summary__states {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  border-right: 1px solid var(--line);
+  padding: 11px 13px;
+}
+
+.contact-pipeline-summary__states label {
+  display: grid;
+  gap: 4px;
+}
+
+.contact-pipeline-summary__states label > span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 720;
+}
+
+.contact-stage-history {
+  display: grid;
+  align-content: start;
+  gap: 0;
+  padding: 11px 13px;
+}
+
+.contact-stage-history > strong {
+  margin-bottom: 4px;
+  font-size: 9px;
+}
+
+.contact-stage-history > div {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 2px 8px;
+  border-bottom: 1px solid #edf0ed;
+  padding: 7px 0;
+}
+
+.contact-stage-history > div:last-child {
+  border-bottom: 0;
+}
+
+.contact-stage-history span {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.contact-stage-history p {
+  margin: 0;
+  color: #465149;
+  font-size: 8px;
+}
+
+.contact-stage-history small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.contact-pipeline-summary__error {
+  background: rgba(163, 59, 50, 0.07);
+  color: #973a32;
+  padding: 8px 13px;
+  font-size: 8px;
+}
+
+.contact-pipeline-summary__empty {
+  padding: 18px 13px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+@media (max-width: 900px) {
+  .pipeline-manager,
+  .pipeline-stage-manager,
+  .contact-pipeline-summary__body {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-pipeline-summary__states {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 760px) {
+  .pipeline-screen {
+    min-height: 100dvh;
+    padding: 20px 12px
+      calc(82px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pipeline-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pipeline-header__actions,
+  .pipeline-toolbar {
+    width: 100%;
+  }
+
+  .pipeline-header__actions select,
+  .pipeline-toolbar input {
+    min-height: 42px;
+    flex: 1 1 auto;
+    font-size: 16px;
+  }
+
+  .pipeline-board {
+    min-height: 58dvh;
+    margin-right: -12px;
+    padding-right: 12px;
+    scroll-snap-type: x proximity;
+  }
+
+  .pipeline-column {
+    width: min(86vw, 330px);
+    min-width: min(86vw, 330px);
+    max-height: 62dvh;
+    scroll-snap-align: start;
+  }
+
+  .pipeline-column__cards {
+    max-height: calc(62dvh - 44px);
+  }
+
+  .pipeline-card {
+    min-height: 120px;
+  }
+
+  .pipeline-card select,
+  .pipeline-manager input,
+  .pipeline-manager select,
+  .contact-pipeline-summary select {
+    min-height: 42px;
+    font-size: 16px;
+  }
+
+  .contact-stage-history > div {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-stage-history small {
+    grid-column: auto;
+  }
+}
+
+/* --- /WAPP P3.2 ------------------------------------------------------ */
+
+/* --- WAPP P3.3 / TASKS AND FOLLOW-UPS -------------------------------- */
+
+.contact-tasks {
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: white;
+}
+
+.contact-tasks > header,
+.tasks-header,
+.tasks-toolbar,
+.contact-task-item__top,
+.contact-task-item__meta,
+.contact-task-item__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.contact-tasks > header {
+  border-bottom: 1px solid var(--line);
+  padding: 11px 13px;
+}
+
+.contact-tasks > header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.contact-tasks > header strong {
+  font-size: 10px;
+}
+
+.contact-tasks > header small {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.contact-tasks__feedback,
+.tasks-feedback {
+  margin: 9px 12px 0;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  padding: 8px 9px;
+  font-size: 8px;
+}
+
+.contact-tasks__feedback--error,
+.tasks-feedback--error {
+  background: rgba(163, 59, 50, 0.07);
+  color: #973a32;
+}
+
+.contact-tasks__layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1.25fr);
+}
+
+.contact-task-form {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  border-right: 1px solid var(--line);
+  background: #fafbfa;
+  padding: 13px;
+}
+
+.contact-task-form > strong {
+  font-size: 10px;
+}
+
+.contact-task-form label {
+  display: grid;
+  gap: 4px;
+}
+
+.contact-task-form label > span {
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 750;
+}
+
+.contact-task-form input,
+.contact-task-form select,
+.contact-task-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: 0;
+  background: white;
+  padding: 7px 8px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 9px;
+}
+
+.contact-task-form input,
+.contact-task-form select {
+  min-height: 36px;
+}
+
+.contact-task-form textarea {
+  resize: vertical;
+}
+
+.contact-task-form__row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.contact-task-form .primary-button {
+  width: fit-content;
+}
+
+.contact-task-list {
+  display: grid;
+  align-content: start;
+  max-height: 540px;
+  overflow-y: auto;
+  padding: 0 13px 13px;
+  scrollbar-width: thin;
+}
+
+.contact-task-list > header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 2;
+  border-bottom: 1px solid var(--line);
+  background: white;
+  padding: 12px 0 9px;
+}
+
+.contact-task-list > header strong {
+  font-size: 10px;
+}
+
+.contact-task-list > header span {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.contact-task-item {
+  display: grid;
+  gap: 6px;
+  border-bottom: 1px solid #edf0ed;
+  padding: 10px 1px;
+}
+
+.contact-task-item:last-child {
+  border-bottom: 0;
+}
+
+.contact-task-item--done,
+.contact-task-item--cancelled {
+  opacity: 0.58;
+}
+
+.contact-task-item--overdue {
+  border-left: 2px solid #a84e49;
+  padding-left: 8px;
+}
+
+.contact-task-item__top > div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.contact-task-item__top time,
+.contact-task-item__meta > span {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.contact-task-item > strong {
+  font-size: 9px;
+}
+
+.contact-task-item > p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #59635d;
+  font-size: 8px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.contact-task-item__meta button,
+.contact-task-item__actions button {
+  border: 0;
+  background: transparent;
+  color: var(--accent-dark);
+  padding: 3px 0;
+  font-size: 7px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.contact-task-item__actions {
+  justify-content: flex-end;
+}
+
+.contact-task-item__actions button:last-child {
+  color: #973a32;
+}
+
+.contact-task-item__reminder-error {
+  color: #973a32;
+  font-size: 7px;
+}
+
+.task-priority,
+.task-overdue {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 3px 6px;
+  font-size: 7px;
+  font-weight: 790;
+}
+
+.task-priority {
+  background: #eef1ef;
+  color: #68716c;
+}
+
+.task-priority--high {
+  background: rgba(193, 128, 63, 0.1);
+  color: #9b612a;
+}
+
+.task-priority--urgent,
+.task-overdue {
+  background: rgba(168, 78, 73, 0.1);
+  color: #973a32;
+}
+
+.task-priority--low {
+  background: rgba(79, 121, 167, 0.09);
+  color: #496d95;
+}
+
+.contact-tasks__empty {
+  padding: 24px 0;
+  color: var(--muted);
+  font-size: 8px;
+  text-align: center;
+}
+
+.tasks-screen {
+  min-height: 100vh;
+  background: var(--surface-subtle);
+  padding: 32px clamp(18px, 4vw, 56px) 56px;
+}
+
+.tasks-header {
+  align-items: flex-end;
+  gap: 20px;
+}
+
+.tasks-header h1 {
+  margin: 6px 0 5px;
+  font-size: clamp(32px, 4vw, 48px);
+  letter-spacing: -0.05em;
+}
+
+.tasks-header p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.tasks-feedback {
+  margin-inline: 0;
+  margin-top: 12px;
+}
+
+.tasks-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+}
+
+.tasks-summary article {
+  display: grid;
+  gap: 2px;
+  border-right: 1px solid var(--line);
+  padding: 12px 14px;
+}
+
+.tasks-summary article:last-child {
+  border-right: 0;
+}
+
+.tasks-summary span {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.tasks-summary strong {
+  font-size: 20px;
+  letter-spacing: -0.04em;
+}
+
+.tasks-toolbar {
+  margin-top: 10px;
+}
+
+.tasks-switch {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+  padding: 3px;
+}
+
+.tasks-switch__item {
+  min-height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  padding: 0 10px;
+  font-size: 8px;
+  font-weight: 740;
+  cursor: pointer;
+}
+
+.tasks-switch__item--active {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.tasks-overdue-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.tasks-empty {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+  padding: 28px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: center;
+}
+
+.tasks-list {
+  overflow: hidden;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+}
+
+.task-row {
+  display: grid;
+  grid-template-columns: 145px minmax(190px, 0.75fr) minmax(240px, 1.3fr) auto;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid #edf0ed;
+  padding: 11px 13px;
+}
+
+.task-row:last-child {
+  border-bottom: 0;
+}
+
+.task-row--overdue {
+  box-shadow: inset 3px 0 0 #a84e49;
+}
+
+.task-row__when,
+.task-row__contact > div,
+.task-row__copy {
+  display: grid;
+  gap: 2px;
+}
+
+.task-row__when strong {
+  font-size: 8px;
+}
+
+.task-row__when span,
+.task-row__contact small,
+.task-row__copy small {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.task-row__contact {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.task-row__contact > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 8px;
+  font-weight: 850;
+}
+
+.task-row__contact strong,
+.task-row__copy strong {
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-row__copy > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.task-row__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.task-row__actions button {
+  border: 0;
+  background: transparent;
+  color: var(--accent-dark);
+  padding: 4px 0;
+  font-size: 7px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.task-row__actions button:last-child {
+  color: #973a32;
+}
+
+@media (max-width: 980px) {
+  .contact-tasks__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-task-form {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .task-row {
+    grid-template-columns: 125px minmax(180px, 0.8fr) minmax(190px, 1fr);
+  }
+
+  .task-row__actions {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .contact-tasks > header,
+  .tasks-header,
+  .tasks-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .contact-task-form__row {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-task-form input,
+  .contact-task-form select,
+  .contact-task-form textarea {
+    min-height: 42px;
+    font-size: 16px;
+  }
+
+  .tasks-screen {
+    min-height: 100dvh;
+    padding: 20px 12px
+      calc(82px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .tasks-header .ghost-button {
+    width: 100%;
+  }
+
+  .tasks-summary {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .tasks-switch {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .tasks-switch__item {
+    min-height: 38px;
+    flex: 1 0 auto;
+  }
+
+  .task-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .task-row__actions {
+    grid-column: auto;
+    justify-content: flex-start;
+  }
+
+  .task-row__actions button {
+    min-height: 36px;
+  }
+}
+
+/* --- /WAPP P3.3 ------------------------------------------------------ */

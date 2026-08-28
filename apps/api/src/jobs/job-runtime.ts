@@ -4,6 +4,20 @@ import type {
 
 import { env } from "../config/env.js";
 import {
+  createTaskReminderWorker
+} from "./task-reminder.worker.js";
+import {
+  closeTaskReminderQueue,
+  ensureTaskReminderSweep
+} from "./task-reminder.queue.js";
+import {
+  createScheduledMessageWorker
+} from "./scheduled-message.worker.js";
+import {
+  closeScheduledMessageQueue,
+  ensureScheduledMessageSweep
+} from "./scheduled-message.queue.js";
+import {
   createAutomationWorker
 } from "./automation.worker.js";
 import {
@@ -39,13 +53,31 @@ export function startEmbeddedJobWorker() {
   embeddedWorkers = [
     createMediaCaptureWorker(),
     createMaintenanceWorker(),
-    createAutomationWorker()
+    createAutomationWorker(),
+    createScheduledMessageWorker(),
+    createTaskReminderWorker()
   ];
 
   void ensureMaintenanceSchedule()
     .catch(error => {
       console.error(
         "[maintenance] scheduler setup failed",
+        error
+      );
+    });
+
+  void ensureScheduledMessageSweep()
+    .catch(error => {
+      console.error(
+        "[scheduled-messages] scheduler setup failed",
+        error
+      );
+    });
+
+  void ensureTaskReminderSweep()
+    .catch(error => {
+      console.error(
+        "[task-reminders] scheduler setup failed",
         error
       );
     });
@@ -106,6 +138,8 @@ export async function closeJobRuntime() {
   await Promise.all([
     closeMediaCaptureQueue(),
     closeMaintenanceQueue(),
-    closeAutomationQueue()
+    closeAutomationQueue(),
+    closeScheduledMessageQueue(),
+    closeTaskReminderQueue()
   ]);
 }

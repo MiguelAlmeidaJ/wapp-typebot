@@ -16,6 +16,7 @@ type EventType =
   | "CLOSED"
   | "REOPENED"
   | "TAGS_UPDATED"
+  | "AUTOMATION_APPLIED"
   | string;
 
 interface TicketEvent {
@@ -104,6 +105,16 @@ function eventTitle(
       return "Atendimento reaberto";
     case "TAGS_UPDATED":
       return "Etiquetas atualizadas";
+    case "MESSAGE_SCHEDULED":
+      return "Mensagem agendada";
+    case "SCHEDULED_MESSAGE_CANCELLED":
+      return "Agendamento cancelado";
+    case "SCHEDULED_MESSAGE_SENT":
+      return "Mensagem agendada enviada";
+    case "SCHEDULED_MESSAGE_FAILED":
+      return "Falha no agendamento";
+    case "AUTOMATION_APPLIED":
+      return "Automação executada";
     default:
       return type;
   }
@@ -201,6 +212,81 @@ function eventDetail(
       return names.length > 0
         ? `Etiquetas atuais: ${names.join(", ")}.`
         : "Todas as etiquetas foram removidas.";
+    }
+
+    case "AUTOMATION_APPLIED": {
+      const ruleName =
+        text(
+          metadata,
+          "ruleName"
+        );
+
+      const trigger =
+        text(
+          metadata,
+          "trigger"
+        );
+
+      const triggerLabel =
+        trigger ===
+          "TICKET_CREATED"
+          ? "novo atendimento"
+          : trigger ===
+              "INBOUND_MESSAGE"
+            ? "mensagem recebida"
+            : null;
+
+      if (
+        ruleName &&
+        triggerLabel
+      ) {
+        return `A regra “${ruleName}” foi executada por ${triggerLabel}.`;
+      }
+
+      if (ruleName) {
+        return `A regra “${ruleName}” foi executada.`;
+      }
+
+      return "Uma automação operacional foi executada pelo sistema.";
+    }
+
+    case "MESSAGE_SCHEDULED": {
+      const scheduledFor =
+        text(
+          metadata,
+          "scheduledFor"
+        );
+
+      return scheduledFor
+        ? `Envio programado para ${dateTimeLabel(scheduledFor)}.`
+        : "Uma mensagem foi programada para envio.";
+    }
+
+    case "SCHEDULED_MESSAGE_CANCELLED":
+      return "O envio programado foi cancelado.";
+
+    case "SCHEDULED_MESSAGE_SENT": {
+      const scheduledFor =
+        text(
+          metadata,
+          "scheduledFor"
+        );
+
+      return scheduledFor
+        ? `Mensagem programada para ${dateTimeLabel(scheduledFor)} enviada pelo sistema.`
+        : "A mensagem agendada foi enviada.";
+    }
+
+    case "SCHEDULED_MESSAGE_FAILED": {
+      const reason =
+        text(
+          metadata,
+          "reason"
+        );
+
+      return reason
+        ? `Falha no envio agendado: ${reason}`
+        : "O envio agendado falhou.";
     }
 
     default:

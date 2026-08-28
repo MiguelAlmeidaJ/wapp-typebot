@@ -97,6 +97,51 @@ enum AutomationRunStatus {
   FAILED
 }
 
+enum ScheduledMessageStatus {
+  PENDING
+  PROCESSING
+  SENT
+  CANCELLED
+  FAILED
+}
+
+enum ContactFieldType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  SELECT
+}
+
+enum CrmStageOutcome {
+  OPEN
+  WON
+  LOST
+}
+
+enum CrmTaskStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
+enum CrmTaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum CrmTaskEventType {
+  CREATED
+  UPDATED
+  REASSIGNED
+  COMPLETED
+  CANCELLED
+  REMINDER_SENT
+  REMINDER_FAILED
+}
+
 enum MembershipRole {
   OWNER
   ADMIN
@@ -119,6 +164,7 @@ model Company {
   ticketEvents            TicketEvent[]
   quickReplies            QuickReply[]
   ticketNotes             TicketNote[]
+  scheduledMessages       ScheduledMessage[]
   queues                  Queue[]
   sessions                Session[]
   createdAt               DateTime             @default(now())
@@ -127,6 +173,12 @@ model Company {
   auditLogs               AuditLog[]
 
   @@index([status])
+  notifications           Notification[]
+  contactFieldDefinitions ContactFieldDefinition[]
+  crmPipelines             CrmPipeline[]
+  contactStageTransitions  ContactStageTransition[]
+  crmTasks                 CrmTask[]
+  crmTaskEvents            CrmTaskEvent[]
 }
 
 model User {
@@ -159,6 +211,7 @@ model CompanyMembership {
   createdQuickReplies QuickReply[]
   createdTicketTags   TicketTag[]
   ticketNotes         TicketNote[]
+  scheduledMessages       ScheduledMessage[]
   auditLogs           AuditLog[]
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
@@ -167,6 +220,12 @@ model CompanyMembership {
   @@index([userId, isActive])
   @@index([companyId, role])
   messageReactions MessageReaction[]
+  notifications           Notification[]
+  pipelineStateUpdates     ContactPipelineState[] @relation("ContactPipelineStateUpdatedBy")
+  contactStageTransitions  ContactStageTransition[] @relation("ContactStageTransitionActor")
+  assignedCrmTasks         CrmTask[] @relation("CrmTaskAssignee")
+  createdCrmTasks          CrmTask[] @relation("CrmTaskCreator")
+  crmTaskEvents            CrmTaskEvent[] @relation("CrmTaskEventActor")
 }
 
 model Session {
@@ -241,6 +300,11 @@ model Contact {
   @@index([companyId, phoneNumber])
   @@index([companyId, name])
   @@index([companyId, email])
+  customFieldValues       ContactFieldValue[]
+  pipelineStates           ContactPipelineState[]
+  stageTransitions         ContactStageTransition[]
+  crmTasks                 CrmTask[]
+  notifications            Notification[]
 }
 
 model Ticket {
@@ -270,6 +334,7 @@ model Ticket {
   events               TicketEvent[]
   tags                 TicketTag[]
   notes                TicketNote[]
+  scheduledMessages       ScheduledMessage[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -279,6 +344,8 @@ model Ticket {
   @@index([contactId, status])
   @@index([companyId, queueId, status])
   @@index([companyId, assignedMembershipId, status])
+  notifications           Notification[]
+  crmTasks                 CrmTask[]
 }
 
 model Tag {
@@ -540,4 +607,222 @@ model AutomationRun {
   @@index([companyId, createdAt])
   @@index([ruleId, createdAt])
   @@index([ticketId, createdAt])
+}
+
+
+model ScheduledMessage {
+  id                    String                 @id @default(uuid()) @db.Char(36)
+  companyId             String                 @db.Char(36)
+  ticketId              String                 @db.Char(36)
+  createdByMembershipId String                 @db.Char(36)
+  body                  String                 @db.Text
+  scheduledFor          DateTime
+  status                ScheduledMessageStatus @default(PENDING)
+  claimedAt             DateTime?
+  sentAt                DateTime?
+  cancelledAt           DateTime?
+  sentMessageId         String?                @db.Char(36)
+  error                 String?                @db.Text
+  company               Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  ticket                Ticket                 @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  createdByMembership   CompanyMembership      @relation(fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([companyId, status, scheduledFor])
+  @@index([ticketId, status, scheduledFor])
+  @@index([createdByMembershipId, createdAt])
+}
+
+
+model Notification {
+  id              String            @id @default(uuid()) @db.Char(36)
+  companyId       String            @db.Char(36)
+  membershipId    String            @db.Char(36)
+  ticketId        String?           @db.Char(36)
+  contactId       String?           @db.Char(36)
+  messageId       String?           @db.Char(36)
+  type            String            @db.VarChar(40)
+  title           String            @db.VarChar(180)
+  body            String            @db.VarChar(500)
+  dedupeKey       String            @db.VarChar(190)
+  occurrenceCount Int               @default(1)
+  readAt          DateTime?
+  company         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  membership      CompanyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  ticket          Ticket?           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  contact         Contact?          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([companyId, membershipId, dedupeKey])
+  @@index([membershipId, readAt, updatedAt])
+  @@index([companyId, updatedAt])
+  @@index([ticketId, updatedAt])
+  @@index([contactId, updatedAt])
+}
+
+
+model ContactFieldDefinition {
+  id        String           @id @default(uuid()) @db.Char(36)
+  companyId String           @db.Char(36)
+  key       String           @db.VarChar(50)
+  label     String           @db.VarChar(120)
+  type      ContactFieldType
+  options   Json?
+  required  Boolean          @default(false)
+  position  Int              @default(0)
+  isActive  Boolean          @default(true)
+  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  values    ContactFieldValue[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([companyId, key])
+  @@index([companyId, isActive, position])
+}
+
+model ContactFieldValue {
+  id        String                 @id @default(uuid()) @db.Char(36)
+  contactId String                 @db.Char(36)
+  fieldId   String                 @db.Char(36)
+  value     String?                @db.Text
+  contact   Contact                @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  field     ContactFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  @@unique([contactId, fieldId])
+  @@index([fieldId, updatedAt])
+  @@index([contactId, updatedAt])
+}
+
+
+model CrmPipeline {
+  id          String                   @id @default(uuid()) @db.Char(36)
+  companyId   String                   @db.Char(36)
+  name        String                   @db.VarChar(120)
+  description String?                  @db.VarChar(500)
+  position    Int                      @default(0)
+  isActive    Boolean                  @default(true)
+  company     Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  stages      CrmStage[]
+  states      ContactPipelineState[]
+  transitions ContactStageTransition[]
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, isActive, position])
+}
+
+model CrmStage {
+  id              String                   @id @default(uuid()) @db.Char(36)
+  pipelineId      String                   @db.Char(36)
+  name            String                   @db.VarChar(120)
+  colorKey        String                   @default("GRAY") @db.VarChar(20)
+  outcome         CrmStageOutcome          @default(OPEN)
+  position        Int                      @default(0)
+  isActive        Boolean                  @default(true)
+  pipeline        CrmPipeline              @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  states          ContactPipelineState[]
+  transitionsFrom ContactStageTransition[] @relation("ContactStageTransitionFrom")
+  transitionsTo   ContactStageTransition[] @relation("ContactStageTransitionTo")
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@unique([pipelineId, name])
+  @@index([pipelineId, isActive, position])
+}
+
+model ContactPipelineState {
+  id                    String             @id @default(uuid()) @db.Char(36)
+  contactId             String             @db.Char(36)
+  pipelineId            String             @db.Char(36)
+  stageId               String             @db.Char(36)
+  updatedByMembershipId String?            @db.Char(36)
+  enteredAt             DateTime           @default(now())
+  contact               Contact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  pipeline              CrmPipeline        @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  stage                 CrmStage           @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  updatedByMembership   CompanyMembership? @relation("ContactPipelineStateUpdatedBy", fields: [updatedByMembershipId], references: [id], onDelete: SetNull)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@unique([contactId, pipelineId])
+  @@index([pipelineId, stageId, updatedAt])
+  @@index([contactId, updatedAt])
+}
+
+model ContactStageTransition {
+  id                String             @id @default(uuid()) @db.Char(36)
+  companyId         String             @db.Char(36)
+  contactId         String             @db.Char(36)
+  pipelineId        String             @db.Char(36)
+  fromStageId       String?            @db.Char(36)
+  toStageId         String?            @db.Char(36)
+  actorMembershipId String?            @db.Char(36)
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact           Contact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  pipeline          CrmPipeline        @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  fromStage         CrmStage?          @relation("ContactStageTransitionFrom", fields: [fromStageId], references: [id], onDelete: Restrict)
+  toStage           CrmStage?          @relation("ContactStageTransitionTo", fields: [toStageId], references: [id], onDelete: Restrict)
+  actorMembership   CompanyMembership? @relation("ContactStageTransitionActor", fields: [actorMembershipId], references: [id], onDelete: SetNull)
+  createdAt         DateTime           @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([contactId, createdAt])
+  @@index([pipelineId, createdAt])
+}
+
+
+model CrmTask {
+  id                    String            @id @default(uuid()) @db.Char(36)
+  companyId             String            @db.Char(36)
+  contactId             String            @db.Char(36)
+  ticketId              String?           @db.Char(36)
+  assigneeMembershipId  String            @db.Char(36)
+  createdByMembershipId String            @db.Char(36)
+  title                 String            @db.VarChar(190)
+  description           String?           @db.Text
+  status                CrmTaskStatus     @default(OPEN)
+  priority              CrmTaskPriority   @default(NORMAL)
+  dueAt                 DateTime
+  reminderAt            DateTime?
+  reminderClaimedAt     DateTime?
+  reminderSentAt        DateTime?
+  reminderFailedAt      DateTime?
+  reminderError         String?           @db.VarChar(500)
+  completedAt           DateTime?
+  cancelledAt           DateTime?
+  company               Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact               Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  ticket                Ticket?           @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  assigneeMembership    CompanyMembership @relation("CrmTaskAssignee", fields: [assigneeMembershipId], references: [id], onDelete: Restrict)
+  createdByMembership   CompanyMembership @relation("CrmTaskCreator", fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  events                CrmTaskEvent[]
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@index([companyId, status, dueAt])
+  @@index([assigneeMembershipId, status, dueAt])
+  @@index([contactId, status, dueAt])
+  @@index([ticketId, status, dueAt])
+  @@index([status, reminderAt, reminderSentAt, reminderFailedAt])
+}
+
+model CrmTaskEvent {
+  id                String             @id @default(uuid()) @db.Char(36)
+  companyId         String             @db.Char(36)
+  taskId            String             @db.Char(36)
+  actorMembershipId String?            @db.Char(36)
+  type              CrmTaskEventType
+  metadata          Json?
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  task              CrmTask            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  actorMembership   CompanyMembership? @relation("CrmTaskEventActor", fields: [actorMembershipId], references: [id], onDelete: SetNull)
+  createdAt         DateTime           @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([taskId, createdAt])
 }

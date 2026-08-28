@@ -9,7 +9,12 @@ export type TicketEventType =
   | "TRANSFERRED"
   | "CLOSED"
   | "REOPENED"
-  | "TAGS_UPDATED";
+  | "TAGS_UPDATED"
+  | "AUTOMATION_APPLIED"
+  | "MESSAGE_SCHEDULED"
+  | "SCHEDULED_MESSAGE_CANCELLED"
+  | "SCHEDULED_MESSAGE_SENT"
+  | "SCHEDULED_MESSAGE_FAILED";
 
 export async function recordTicketEvent(input: {
   companyId: string;

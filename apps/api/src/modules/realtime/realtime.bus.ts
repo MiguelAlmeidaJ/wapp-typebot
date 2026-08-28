@@ -10,6 +10,7 @@ export type RealtimeEventType =
   | "message.updated"
   | "message.reaction.updated"
   | "note.created"
+  | "notification.created"
   | "quick-reply.updated"
   | "tag.updated"
   | "sla.updated"
@@ -18,7 +19,9 @@ export type RealtimeEventType =
   | "ticket.created"
   | "queue.updated"
   | "connection.updated"
-  | "presence.updated";
+  | "presence.updated"
+  | "contact.pipeline.updated"
+  | "task.updated";
 
 export interface RealtimeEvent {
   id: string;
@@ -27,6 +30,7 @@ export interface RealtimeEvent {
   ticketId?: string;
   messageId?: string;
   noteId?: string;
+  notificationId?: string;
   quickReplyId?: string;
   tagId?: string;
   eventId?: string;
@@ -34,6 +38,9 @@ export interface RealtimeEvent {
   connectionId?: string;
   membershipId?: string;
   online?: boolean;
+  contactId?: string;
+  pipelineId?: string;
+  taskId?: string;
 }
 
 const emitter =

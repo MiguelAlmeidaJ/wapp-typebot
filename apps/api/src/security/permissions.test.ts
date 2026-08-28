@@ -16,8 +16,10 @@ const allPermissions:
     "observability.read",
     "automations.read",
     "automations.manage",
+    "reports.read",
     "contacts.read",
     "contacts.manage",
+    "contactFields.manage",
     "quickReplies.read",
     "quickReplies.manage",
     "tags.read",
@@ -30,7 +32,13 @@ const allPermissions:
     "queues.manage",
     "whatsapp.read",
     "whatsapp.manage",
-    "whatsapp.test"
+    "whatsapp.test",
+    "pipelines.read",
+    "pipelines.move",
+    "pipelines.manage",
+    "tasks.read",
+    "tasks.manage",
+    "tasks.admin"
   ];
 
 describe(
@@ -214,6 +222,166 @@ describe(
           ),
           false
         );
+      }
+    );
+  }
+);
+
+
+describe(
+  "management report permissions",
+  () => {
+    it(
+      "management reports are restricted to managerial roles",
+      () => {
+        for (
+          const role
+          of [
+            "OWNER",
+            "ADMIN",
+            "SUPERVISOR"
+          ] as const
+        ) {
+          assert.equal(
+            roleHasPermission(
+              role,
+              "reports.read"
+            ),
+            true
+          );
+        }
+
+        assert.equal(
+          roleHasPermission(
+            "AGENT",
+            "reports.read"
+          ),
+          false
+        );
+      }
+    );
+  }
+);
+
+
+describe(
+  "contact CRM field permissions",
+  () => {
+    it(
+      "contact field schema is managerial only",
+      () => {
+        for (
+          const role
+          of [
+            "OWNER",
+            "ADMIN",
+            "SUPERVISOR"
+          ] as const
+        ) {
+          assert.equal(
+            roleHasPermission(
+              role,
+              "contactFields.manage"
+            ),
+            true
+          );
+        }
+
+        assert.equal(
+          roleHasPermission(
+            "AGENT",
+            "contactFields.manage"
+          ),
+          false
+        );
+      }
+    );
+  }
+);
+
+
+describe(
+  "CRM pipeline permissions",
+  () => {
+    it(
+      "pipeline schema is managerial while movement stays operational",
+      () => {
+        for (
+          const role
+          of [
+            "OWNER",
+            "ADMIN",
+            "SUPERVISOR"
+          ] as const
+        ) {
+          assert.equal(
+            roleHasPermission(
+              role,
+              "pipelines.manage"
+            ),
+            true
+          );
+
+          assert.equal(
+            roleHasPermission(
+              role,
+              "pipelines.move"
+            ),
+            true
+          );
+        }
+
+        assert.equal(
+          roleHasPermission(
+            "AGENT",
+            "pipelines.read"
+          ),
+          true
+        );
+
+        assert.equal(
+          roleHasPermission(
+            "AGENT",
+            "pipelines.move"
+          ),
+          true
+        );
+
+        assert.equal(
+          roleHasPermission(
+            "AGENT",
+            "pipelines.manage"
+          ),
+          false
+        );
+      }
+    );
+  }
+);
+
+
+describe(
+  "CRM task permissions",
+  () => {
+    it(
+      "task work is operational while team-wide scope is managerial",
+      () => {
+        for (
+          const role
+          of [
+            "OWNER",
+            "ADMIN",
+            "SUPERVISOR"
+          ] as const
+        ) {
+          assert.equal(roleHasPermission(role, "tasks.read"), true);
+          assert.equal(roleHasPermission(role, "tasks.manage"), true);
+          assert.equal(roleHasPermission(role, "tasks.admin"), true);
+        }
+
+        assert.equal(roleHasPermission("AGENT", "tasks.read"), true);
+        assert.equal(roleHasPermission("AGENT", "tasks.manage"), true);
+        assert.equal(roleHasPermission("AGENT", "tasks.admin"), false);
       }
     );
   }

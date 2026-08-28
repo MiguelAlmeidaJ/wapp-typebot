@@ -7,6 +7,9 @@ import { prisma } from "../../lib/database.js";
 import { toPrismaJson } from "../../lib/prisma-json.js";
 import type { WappRole } from "../../lib/tokens.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
+import {
+  notifyTicketAssignment
+} from "../notifications/notification.service.js";
 import { recordTicketEvent } from "./ticket-event.service.js";
 import { storeMedia } from "../media/media-storage.js";
 import { persistReaction } from "../messages/message-reaction.service.js";
@@ -631,6 +634,23 @@ export async function transferTicket(input: {
         null
     }
   });
+
+  if (
+    updated.assignedMembershipId &&
+    updated.assignedMembershipId !==
+      ticket.assignedMembershipId
+  ) {
+    await notifyTicketAssignment({
+      companyId:
+        input.companyId,
+      ticketId:
+        updated.id,
+      membershipId:
+        updated.assignedMembershipId,
+      actorMembershipId:
+        input.actorMembershipId
+    });
+  }
 
   publishRealtime(input.companyId, {
     type: "ticket.updated",

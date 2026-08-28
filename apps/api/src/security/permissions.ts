@@ -6,8 +6,10 @@ export type WappPermission =
   | "observability.read"
   | "automations.read"
   | "automations.manage"
+  | "reports.read"
   | "contacts.read"
   | "contacts.manage"
+  | "contactFields.manage"
   | "quickReplies.read"
   | "quickReplies.manage"
   | "tags.read"
@@ -20,13 +22,21 @@ export type WappPermission =
   | "queues.manage"
   | "whatsapp.read"
   | "whatsapp.manage"
-  | "whatsapp.test";
+  | "whatsapp.test"
+  | "pipelines.read"
+  | "pipelines.move"
+  | "pipelines.manage"
+  | "tasks.read"
+  | "tasks.manage"
+  | "tasks.admin";
 
 const permissionsByRole: Record<
   WappRole,
   readonly WappPermission[]
 > = {
   OWNER: [
+    "contactFields.manage",
+    "reports.read",
     "automations.manage",
     "automations.read",
     "admin.test",
@@ -46,9 +56,17 @@ const permissionsByRole: Record<
     "queues.manage",
     "whatsapp.read",
     "whatsapp.manage",
-    "whatsapp.test"
+    "whatsapp.test",
+    "pipelines.read",
+    "pipelines.move",
+    "pipelines.manage",
+    "tasks.read",
+    "tasks.manage",
+    "tasks.admin"
   ],
   ADMIN: [
+    "contactFields.manage",
+    "reports.read",
     "automations.manage",
     "automations.read",
     "admin.test",
@@ -68,9 +86,17 @@ const permissionsByRole: Record<
     "queues.manage",
     "whatsapp.read",
     "whatsapp.manage",
-    "whatsapp.test"
+    "whatsapp.test",
+    "pipelines.read",
+    "pipelines.move",
+    "pipelines.manage",
+    "tasks.read",
+    "tasks.manage",
+    "tasks.admin"
   ],
   SUPERVISOR: [
+    "contactFields.manage",
+    "reports.read",
     "automations.manage",
     "automations.read",
     "observability.read",
@@ -85,7 +111,13 @@ const permissionsByRole: Record<
     "team.read",
     "queues.read",
     "whatsapp.read",
-    "whatsapp.test"
+    "whatsapp.test",
+    "pipelines.read",
+    "pipelines.move",
+    "pipelines.manage",
+    "tasks.read",
+    "tasks.manage",
+    "tasks.admin"
   ],
   AGENT: [
     "automations.read",
@@ -96,7 +128,11 @@ const permissionsByRole: Record<
     "sla.read",
     "team.read",
     "queues.read",
-    "whatsapp.read"
+    "whatsapp.read",
+    "pipelines.read",
+    "pipelines.move",
+    "tasks.read",
+    "tasks.manage"
   ]
 };
 

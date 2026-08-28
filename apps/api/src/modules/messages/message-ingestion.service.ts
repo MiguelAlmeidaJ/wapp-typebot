@@ -5,6 +5,9 @@ import {
   scheduleAutomationEvaluation
 } from "../../jobs/automation.dispatch.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
+import {
+  notifyInboundTicketActivity
+} from "../notifications/notification.service.js";
 import { recordTicketEvent } from "../tickets/ticket-event.service.js";
 import { scheduleMessageMediaCapture } from "../media/media-capture.service.js";
 import {
@@ -320,6 +323,22 @@ export async function ingestEvolutionMessage(
   }
 
   if (!parsed.fromMe) {
+    await notifyInboundTicketActivity({
+      companyId:
+        connection.companyId,
+      ticketId:
+        ticket.id,
+      messageId:
+        message.id,
+      isNewTicket:
+        !before,
+      preview:
+        parsed.body ??
+        null,
+      fallbackPreview:
+        preview(parsed)
+    });
+
     if (!before) {
       scheduleAutomationEvaluation({
         companyId:

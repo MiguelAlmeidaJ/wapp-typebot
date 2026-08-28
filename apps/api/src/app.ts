@@ -18,6 +18,9 @@ import { auditRoutes } from "./modules/audit/audit.routes.js";
 import { installAdminAuditHooks } from "./modules/audit/audit.hooks.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { contactRoutes } from "./modules/contacts/contact.routes.js";
+import { contactCrmRoutes } from "./modules/contact-crm/contact-crm.routes.js";
+import { pipelineRoutes } from "./modules/pipelines/pipeline.routes.js";
+import { taskRoutes } from "./modules/tasks/task.routes.js";
 import { whatsappRoutes } from "./modules/whatsapp/whatsapp.routes.js";
 import {
   startEvolutionHealthMonitor,
@@ -31,7 +34,9 @@ import { teamRoutes } from "./modules/team/team.routes.js";
 import { tagRoutes } from "./modules/tags/tag.routes.js";
 import { slaRoutes } from "./modules/sla/sla.routes.js";
 import { operationalAnalyticsRoutes } from "./modules/analytics/operational-analytics.routes.js";
+import { managementReportRoutes } from "./modules/analytics/management-report.routes.js";
 import { realtimeRoutes } from "./modules/realtime/realtime.routes.js";
+import { notificationRoutes } from "./modules/notifications/notification.routes.js";
 import { healthRoutes } from "./modules/health/health.routes.js";
 import { observabilityRoutes } from "./modules/observability/observability.routes.js";
 import { installHttpMetricsHooks } from "./modules/observability/metrics.service.js";
@@ -41,6 +46,7 @@ import {
 } from "./modules/realtime/realtime.bus.js";
 import { queueRoutes } from "./modules/queues/queue.routes.js";
 import { quickReplyRoutes } from "./modules/quick-replies/quick-reply.routes.js";
+import { scheduledMessageRoutes } from "./modules/scheduled-messages/scheduled-message.routes.js";
 import { evolutionWebhookRoutes } from "./modules/webhooks/evolution-webhook.routes.js";
 
 export async function buildApp() {
@@ -192,6 +198,9 @@ export async function buildApp() {
   await app.register(authRoutes);
   await app.register(automationRoutes);
   await app.register(contactRoutes);
+  await app.register(contactCrmRoutes);
+  await app.register(pipelineRoutes);
+  await app.register(taskRoutes);
   await app.register(adminRoutes);
   await app.register(auditRoutes);
   await app.register(whatsappRoutes);
@@ -200,12 +209,15 @@ export async function buildApp() {
   await app.register(mediaRoutes);
   await app.register(messageSearchRoutes);
   await app.register(realtimeRoutes);
+  await app.register(notificationRoutes);
   await app.register(teamRoutes);
   await app.register(tagRoutes);
   await app.register(slaRoutes);
   await app.register(operationalAnalyticsRoutes);
+  await app.register(managementReportRoutes);
   await app.register(queueRoutes);
   await app.register(quickReplyRoutes);
+  await app.register(scheduledMessageRoutes);
   await app.register(evolutionWebhookRoutes);
 
   app.addHook("onClose", async () => {

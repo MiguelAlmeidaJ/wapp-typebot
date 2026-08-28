@@ -6,6 +6,9 @@ import { prisma } from "../../lib/database.js";
 import { toPrismaJson } from "../../lib/prisma-json.js";
 import { recordAudit } from "../audit/audit.service.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
+import {
+  notifyTicketAssignment
+} from "../notifications/notification.service.js";
 import { recordTicketEvent } from "../tickets/ticket-event.service.js";
 
 export type AutomationTriggerValue =
@@ -1058,6 +1061,22 @@ async function executeAction(input: {
             "OPEN"
         }
       });
+
+      if (
+        ticket.assignedMembershipId !==
+        membership.id
+      ) {
+        await notifyTicketAssignment({
+          companyId:
+            input.companyId,
+          ticketId:
+            ticket.id,
+          membershipId:
+            membership.id,
+          actorMembershipId:
+            null
+        });
+      }
 
       return {
         type:
