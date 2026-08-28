@@ -56,7 +56,9 @@ async function messageCursor(
   return message;
 }
 
-function pageResult(
+async function pageResult(
+  companyId: string,
+  ticketId: string,
   messages:
     Awaited<
       ReturnType<
@@ -68,8 +70,168 @@ function pageResult(
     hasMoreAfter: boolean;
   }
 ) {
+  const quotedExternalIds =
+    Array.from(
+      new Set(
+        messages
+          .map(
+            message =>
+              message
+                .quotedExternalId
+          )
+          .filter(
+            (
+              externalId
+            ): externalId is string =>
+              Boolean(
+                externalId
+              )
+          )
+      )
+    );
+
+  const quotedMessages =
+    quotedExternalIds.length >
+      0
+      ? await prisma.message.findMany({
+          where: {
+            companyId,
+            ticketId,
+            externalId: {
+              in:
+                quotedExternalIds
+            }
+          },
+          select: {
+            id: true,
+            externalId:
+              true,
+            direction:
+              true,
+            type: true,
+            body: true,
+            mediaFileName:
+              true,
+            timestamp:
+              true
+          }
+        })
+      : [];
+
+  const quotedByExternalId =
+    new Map(
+      quotedMessages.map(
+        message => [
+          message.externalId,
+          message
+        ]
+      )
+    );
+
+  const reactions =
+    messages.length > 0
+      ? await prisma.messageReaction.findMany({
+          where: {
+            messageId: {
+              in:
+                messages.map(
+                  message =>
+                    message.id
+                )
+            }
+          },
+          include: {
+            reactedByMembership: {
+              select: {
+                user: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: {
+            updatedAt:
+              "asc"
+          }
+        })
+      : [];
+
+  const reactionsByMessageId =
+    new Map<
+      string,
+      Array<{
+        id: string;
+        reactorKey: string;
+        reactorJid:
+          | string
+          | null;
+        fromMe: boolean;
+        emoji: string;
+        actorName:
+          | string
+          | null;
+        updatedAt: string;
+      }>
+    >();
+
+  for (
+    const reaction
+    of reactions
+  ) {
+    const current =
+      reactionsByMessageId.get(
+        reaction.messageId
+      ) ?? [];
+
+    current.push({
+      id:
+        reaction.id,
+      reactorKey:
+        reaction.reactorKey,
+      reactorJid:
+        reaction.reactorJid,
+      fromMe:
+        reaction.fromMe,
+      emoji:
+        reaction.emoji,
+      actorName:
+        reaction
+          .reactedByMembership
+          ?.user.name ??
+        null,
+      updatedAt:
+        reaction.updatedAt
+          .toISOString()
+    });
+
+    reactionsByMessageId.set(
+      reaction.messageId,
+      current
+    );
+  }
+
   return {
-    messages,
+    messages:
+      messages.map(
+        message => ({
+          ...message,
+          quotedMessage:
+            message
+              .quotedExternalId
+              ? quotedByExternalId.get(
+                  message
+                    .quotedExternalId
+                ) ??
+                null
+              : null,
+          reactions:
+            reactionsByMessageId.get(
+              message.id
+            ) ?? []
+        })
+      ),
     pagination: {
       hasMoreBefore:
         input.hasMoreBefore,
@@ -198,6 +360,8 @@ export async function listTicketMessagePage(
       );
 
     return pageResult(
+      input.companyId,
+      input.ticketId,
       [
         ...older,
         ...newer
@@ -248,6 +412,8 @@ export async function listTicketMessagePage(
         .reverse();
 
     return pageResult(
+      input.companyId,
+      input.ticketId,
       messages,
       {
         hasMoreBefore,
@@ -294,6 +460,8 @@ export async function listTicketMessagePage(
       );
 
     return pageResult(
+      input.companyId,
+      input.ticketId,
       messages,
       {
         hasMoreBefore:
@@ -332,6 +500,8 @@ export async function listTicketMessagePage(
       .reverse();
 
   return pageResult(
+    input.companyId,
+    input.ticketId,
     messages,
     {
       hasMoreBefore,

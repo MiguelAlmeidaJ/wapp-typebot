@@ -1,11 +1,14 @@
 import { env } from "../../config/env.js";
 import { AppError } from "../../errors/app-error.js";
+import { buildEvolutionReactionPayload } from "./evolution-reaction-payloads.js";
+import { buildEvolutionTextPayload } from "./evolution-payloads.js";
 import type {
   CreateWhatsAppInstanceInput,
   ConfigureWebhookInput,
   DownloadMediaInput,
   DownloadMediaResult,
   SendMediaInput,
+  SendReactionInput,
   SendTextInput,
   SendWhatsAppAudioInput,
   WhatsAppConnectionState,
@@ -246,10 +249,29 @@ export class EvolutionWhatsAppClient
       )}`,
       {
         method: "POST",
-        body: JSON.stringify({
-          number: input.number,
-          text: input.text
-        })
+        body: JSON.stringify(
+          buildEvolutionTextPayload(
+            input
+          )
+        )
+      }
+    );
+  }
+
+  async sendReaction(
+    input: SendReactionInput
+  ): Promise<unknown> {
+    return this.request(
+      `/message/sendReaction/${encodeURIComponent(
+        input.instanceName
+      )}`,
+      {
+        method: "POST",
+        body: JSON.stringify(
+          buildEvolutionReactionPayload(
+            input
+          )
+        )
       }
     );
   }

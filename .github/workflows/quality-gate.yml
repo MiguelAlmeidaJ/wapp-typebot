@@ -51,6 +51,9 @@ jobs:
       - name: Unit regression tests
         run: pnpm test
 
+      - name: Integration tests
+        run: pnpm test:integration
+
       - name: Typecheck
         run: pnpm typecheck
 

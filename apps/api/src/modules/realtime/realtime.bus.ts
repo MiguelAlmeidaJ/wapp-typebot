@@ -8,6 +8,7 @@ import { env } from "../../config/env.js";
 export type RealtimeEventType =
   | "message.created"
   | "message.updated"
+  | "message.reaction.updated"
   | "note.created"
   | "quick-reply.updated"
   | "tag.updated"

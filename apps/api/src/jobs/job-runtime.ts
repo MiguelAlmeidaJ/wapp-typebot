@@ -4,35 +4,61 @@ import type {
 
 import { env } from "../config/env.js";
 import {
+  createAutomationWorker
+} from "./automation.worker.js";
+import {
+  closeAutomationQueue
+} from "./automation.queue.js";
+import {
   closeMediaCaptureQueue
 } from "./media-capture.queue.js";
 import {
   createMediaCaptureWorker
 } from "./media-capture.worker.js";
+import {
+  closeMaintenanceQueue,
+  ensureMaintenanceSchedule
+} from "./maintenance.queue.js";
+import {
+  createMaintenanceWorker
+} from "./maintenance.worker.js";
 
-let embeddedWorker:
-  | Worker
-  | null =
-  null;
+let embeddedWorkers:
+  Worker[] = [];
 
 export function startEmbeddedJobWorker() {
   if (
     !env.REDIS_URL ||
     !env.JOBS_EMBEDDED_WORKER ||
-    embeddedWorker
+    embeddedWorkers.length >
+      0
   ) {
     return;
   }
 
-  embeddedWorker =
-    createMediaCaptureWorker();
+  embeddedWorkers = [
+    createMediaCaptureWorker(),
+    createMaintenanceWorker(),
+    createAutomationWorker()
+  ];
+
+  void ensureMaintenanceSchedule()
+    .catch(error => {
+      console.error(
+        "[maintenance] scheduler setup failed",
+        error
+      );
+    });
 
   console.info(
-    "[jobs] embedded media worker started",
+    "[jobs] embedded workers started",
     {
-      concurrency:
+      mediaConcurrency:
         env
-          .JOBS_MEDIA_CAPTURE_CONCURRENCY
+          .JOBS_MEDIA_CAPTURE_CONCURRENCY,
+      maintenance:
+        env
+          .MAINTENANCE_ENABLED
     }
   );
 }
@@ -47,28 +73,39 @@ export function getJobRuntimeStatus() {
       env
         .JOBS_EMBEDDED_WORKER,
     embeddedWorkerRunning:
-      Boolean(
-        embeddedWorker
-      ),
+      embeddedWorkers.length >
+      0,
     mediaConcurrency:
       env
         .JOBS_MEDIA_CAPTURE_CONCURRENCY,
     mediaAttempts:
       env
-        .JOBS_MEDIA_CAPTURE_ATTEMPTS
+        .JOBS_MEDIA_CAPTURE_ATTEMPTS,
+    maintenanceEnabled:
+      env
+        .MAINTENANCE_ENABLED,
+    maintenanceIntervalHours:
+      env
+        .MAINTENANCE_INTERVAL_HOURS
   };
 }
 
 export async function closeJobRuntime() {
-  const worker =
-    embeddedWorker;
+  const workers =
+    embeddedWorkers;
 
-  embeddedWorker =
-    null;
+  embeddedWorkers = [];
 
-  if (worker) {
-    await worker.close();
-  }
+  await Promise.all(
+    workers.map(
+      worker =>
+        worker.close()
+    )
+  );
 
-  await closeMediaCaptureQueue();
+  await Promise.all([
+    closeMediaCaptureQueue(),
+    closeMaintenanceQueue(),
+    closeAutomationQueue()
+  ]);
 }

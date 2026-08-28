@@ -73,6 +73,30 @@ enum MessageType {
   UNKNOWN
 }
 
+enum AutomationTrigger {
+  TICKET_CREATED
+  INBOUND_MESSAGE
+}
+
+enum AutomationConversationType {
+  ALL
+  DIRECT
+  GROUP
+}
+
+enum AutomationActionType {
+  SET_QUEUE
+  ASSIGN_MEMBERSHIP
+  ADD_TAG
+  SEND_TEXT
+}
+
+enum AutomationRunStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
 enum MembershipRole {
   OWNER
   ADMIN
@@ -100,6 +124,7 @@ model Company {
   createdAt               DateTime             @default(now())
   updatedAt               DateTime             @updatedAt
   tags                    Tag[]
+  auditLogs               AuditLog[]
 
   @@index([status])
 }
@@ -134,12 +159,14 @@ model CompanyMembership {
   createdQuickReplies QuickReply[]
   createdTicketTags   TicketTag[]
   ticketNotes         TicketNote[]
+  auditLogs           AuditLog[]
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
   @@unique([companyId, userId])
   @@index([userId, isActive])
   @@index([companyId, role])
+  messageReactions MessageReaction[]
 }
 
 model Session {
@@ -369,6 +396,7 @@ model Message {
   @@index([companyId, timestamp])
   @@index([companyId, mediaStatus])
   @@index([companyId, deliveryStatus])
+  reactions              MessageReaction[]
 }
 
 model Queue {
@@ -397,4 +425,119 @@ model QueueMember {
 
   @@unique([queueId, membershipId])
   @@index([membershipId])
+}
+
+
+model AuditLog {
+  id                String             @id @default(uuid()) @db.Char(36)
+  companyId         String             @db.Char(36)
+  actorMembershipId String?            @db.Char(36)
+  action            String             @db.VarChar(80)
+  entityType        String             @db.VarChar(60)
+  entityId          String?            @db.VarChar(190)
+  beforeData        Json?
+  afterData         Json?
+  metadata          Json?
+  requestId         String?            @db.VarChar(100)
+  ipAddress         String?            @db.VarChar(64)
+  userAgent         String?            @db.VarChar(500)
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  actorMembership   CompanyMembership? @relation(fields: [actorMembershipId], references: [id], onDelete: SetNull)
+  createdAt         DateTime           @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([companyId, action, createdAt])
+  @@index([companyId, entityType, entityId])
+  @@index([actorMembershipId, createdAt])
+}
+
+
+model MaintenanceRun {
+  id         String   @id @default(uuid()) @db.Char(36)
+  source     String   @db.VarChar(20)
+  status     String   @db.VarChar(20)
+  result     Json?
+  error      String?  @db.Text
+  startedAt  DateTime
+  finishedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+
+model MessageReaction {
+  id                    String             @id @default(uuid()) @db.Char(36)
+  companyId             String             @db.Char(36)
+  ticketId              String             @db.Char(36)
+  messageId             String             @db.Char(36)
+  reactedByMembershipId String?            @db.Char(36)
+  reactorKey            String             @db.VarChar(190)
+  reactorJid            String?            @db.VarChar(190)
+  fromMe                Boolean            @default(false)
+  emoji                 String             @db.VarChar(32)
+  message               Message            @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  reactedByMembership   CompanyMembership? @relation(fields: [reactedByMembershipId], references: [id], onDelete: SetNull)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@unique([messageId, reactorKey])
+  @@index([companyId, ticketId])
+  @@index([ticketId, updatedAt])
+  @@index([reactedByMembershipId])
+}
+
+
+model AutomationRule {
+  id                  String                     @id @default(uuid()) @db.Char(36)
+  companyId           String                     @db.Char(36)
+  name                String                     @db.VarChar(160)
+  isActive            Boolean                    @default(true)
+  trigger             AutomationTrigger
+  keywordContains     String?                    @db.VarChar(190)
+  onlyIfUnassigned    Boolean                    @default(false)
+  conversationType    AutomationConversationType @default(ALL)
+  priority            Int                        @default(100)
+  createdByMembershipId String?                  @db.Char(36)
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  @@index([companyId, isActive, trigger, priority])
+  @@index([companyId, updatedAt])
+}
+
+model AutomationAction {
+  id           String               @id @default(uuid()) @db.Char(36)
+  ruleId       String               @db.Char(36)
+  type         AutomationActionType
+  orderIndex   Int                  @default(0)
+  queueId      String?              @db.Char(36)
+  membershipId String?              @db.Char(36)
+  tagId        String?              @db.Char(36)
+  text         String?              @db.Text
+  createdAt    DateTime             @default(now())
+
+  @@index([ruleId, orderIndex])
+}
+
+model AutomationRun {
+  id              String              @id @default(uuid()) @db.Char(36)
+  companyId       String              @db.Char(36)
+  ruleId          String              @db.Char(36)
+  ticketId        String              @db.Char(36)
+  sourceMessageId String              @db.Char(36)
+  trigger         AutomationTrigger
+  status          AutomationRunStatus @default(RUNNING)
+  matched         Boolean             @default(false)
+  dedupeKey       String              @unique @db.VarChar(190)
+  details         Json?
+  error           String?             @db.Text
+  startedAt       DateTime            @default(now())
+  finishedAt      DateTime?
+  createdAt       DateTime            @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([ruleId, createdAt])
+  @@index([ticketId, createdAt])
 }

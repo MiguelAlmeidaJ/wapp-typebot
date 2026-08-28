@@ -13,6 +13,9 @@ import { AppError } from "./errors/app-error.js";
 import { closeRateLimitStore } from "./security/rate-limit.js";
 import { prisma } from "./lib/database.js";
 import { adminRoutes } from "./modules/admin/admin.routes.js";
+import { automationRoutes } from "./modules/automations/automation.routes.js";
+import { auditRoutes } from "./modules/audit/audit.routes.js";
+import { installAdminAuditHooks } from "./modules/audit/audit.hooks.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { contactRoutes } from "./modules/contacts/contact.routes.js";
 import { whatsappRoutes } from "./modules/whatsapp/whatsapp.routes.js";
@@ -30,6 +33,8 @@ import { slaRoutes } from "./modules/sla/sla.routes.js";
 import { operationalAnalyticsRoutes } from "./modules/analytics/operational-analytics.routes.js";
 import { realtimeRoutes } from "./modules/realtime/realtime.routes.js";
 import { healthRoutes } from "./modules/health/health.routes.js";
+import { observabilityRoutes } from "./modules/observability/observability.routes.js";
+import { installHttpMetricsHooks } from "./modules/observability/metrics.service.js";
 import {
   closeRealtimeTransport,
   getRealtimeTransportStatus
@@ -140,6 +145,9 @@ export async function buildApp() {
     }
   );
 
+  installAdminAuditHooks(app);
+  installHttpMetricsHooks(app);
+
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof AppError) {
       return reply.status(error.statusCode).send({
@@ -180,9 +188,12 @@ export async function buildApp() {
   }));
 
   await app.register(healthRoutes);
+  await app.register(observabilityRoutes);
   await app.register(authRoutes);
+  await app.register(automationRoutes);
   await app.register(contactRoutes);
   await app.register(adminRoutes);
+  await app.register(auditRoutes);
   await app.register(whatsappRoutes);
   await app.register(ticketRoutes);
   await app.register(ticketMediaRoutes);

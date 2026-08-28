@@ -34,6 +34,25 @@ const envSchema = z.object({
     .min(1)
     .max(20)
     .default(5),
+  MAINTENANCE_ENABLED: booleanTrueFromEnv,
+  MAINTENANCE_INTERVAL_HOURS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(168)
+    .default(6),
+  SESSION_RETENTION_DAYS: z.coerce
+    .number()
+    .int()
+    .min(7)
+    .max(365)
+    .default(30),
+  MAINTENANCE_STALE_MEDIA_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(1_440)
+    .default(30),
   API_BODY_MAX_BYTES: z.coerce
     .number()
     .int()
@@ -41,6 +60,11 @@ const envSchema = z.object({
     .default(1_048_576),
 
   JWT_SECRET: z.string().min(32),
+  METRICS_TOKEN: z
+    .string()
+    .min(32)
+    .optional()
+    .or(z.literal("")),
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   COOKIE_SECURE: booleanFromEnv,

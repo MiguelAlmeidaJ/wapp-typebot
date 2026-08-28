@@ -7,6 +7,7 @@ import { env } from "../../config/env.js";
 import { AppError } from "../../errors/app-error.js";
 import { prisma } from "../../lib/database.js";
 import { ingestEvolutionMessage } from "../messages/message-ingestion.service.js";
+import { ingestEvolutionReaction } from "../messages/message-reaction.service.js";
 import { ingestEvolutionMessageUpdate } from "../messages/message-status.service.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
 
@@ -204,10 +205,18 @@ export async function evolutionWebhookRoutes(
           });
         }
       } else if (event === "MESSAGES_UPSERT") {
-        const result = await ingestEvolutionMessage(
-          body,
-          connection
-        );
+        const reaction =
+          await ingestEvolutionReaction(
+            body,
+            connection
+          );
+
+        const result =
+          reaction ??
+          await ingestEvolutionMessage(
+            body,
+            connection
+          );
 
         request.log.info(
           {
@@ -216,7 +225,9 @@ export async function evolutionWebhookRoutes(
             instance,
             result
           },
-          "Evolution message processed"
+          reaction
+            ? "Evolution reaction processed"
+            : "Evolution message processed"
         );
       } else if (event === "MESSAGES_UPDATE") {
         const result =

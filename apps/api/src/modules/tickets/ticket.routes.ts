@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { requireAuth } from "../auth/auth.guard.js";
+import { listTicketMessageReactions } from "../messages/message-reaction.service.js";
 import { listTicketEvents } from "./ticket-event.service.js";
 import { listTicketMessagePage } from "./ticket-message-history.service.js";
 import {
@@ -14,11 +15,24 @@ import {
   markTicketRead,
   replaceTicketTags,
   sendTicketText,
+  sendTicketReaction,
   transferTicket
 } from "./ticket.service.js";
 
 const ticketIdSchema = z.object({
   id: z.string().uuid()
+});
+
+const messageReactionParamsSchema = z.object({
+  id: z.string().uuid(),
+  messageId:
+    z.string().uuid()
+});
+
+const reactionSchema = z.object({
+  emoji: z
+    .string()
+    .max(16)
 });
 
 const messageListSchema = z
@@ -58,12 +72,64 @@ const messageListSchema = z
 
 const listSchema = z.object({
   status: z
-    .enum(["ACTIVE", "OPEN", "PENDING", "CLOSED"])
-    .default("ACTIVE")
+    .enum([
+      "ACTIVE",
+      "OPEN",
+      "PENDING",
+      "CLOSED"
+    ])
+    .default("ACTIVE"),
+  q: z
+    .string()
+    .trim()
+    .max(120)
+    .optional(),
+  queueId: z
+    .union([
+      z.string().uuid(),
+      z.literal("NONE")
+    ])
+    .optional(),
+  assigneeId: z
+    .union([
+      z.string().uuid(),
+      z.literal("ME"),
+      z.literal("NONE")
+    ])
+    .optional(),
+  unreadOnly: z
+    .enum([
+      "true",
+      "false"
+    ])
+    .transform(
+      value =>
+        value === "true"
+    )
+    .optional(),
+  tagId: z
+    .string()
+    .uuid()
+    .optional(),
+  conversationType: z
+    .enum([
+      "ALL",
+      "DIRECT",
+      "GROUP"
+    ])
+    .default("ALL")
 });
 
 const sendTextSchema = z.object({
-  text: z.string().trim().min(1).max(4096)
+  text: z
+    .string()
+    .trim()
+    .min(1)
+    .max(4096),
+  replyToMessageId:
+    z.string()
+      .uuid()
+      .optional()
 });
 
 const createNoteSchema = z.object({
@@ -87,7 +153,26 @@ export async function ticketRoutes(app: FastifyInstance) {
     const query = listSchema.parse(request.query);
 
     return {
-      tickets: await listTickets(auth.companyId, query.status)
+      tickets: await listTickets(
+        auth.companyId,
+        query.status,
+        {
+          q:
+            query.q,
+          queueId:
+            query.queueId,
+          assigneeId:
+            query.assigneeId,
+          actorMembershipId:
+            auth.membershipId,
+          unreadOnly:
+            query.unreadOnly,
+          tagId:
+            query.tagId,
+          conversationType:
+            query.conversationType
+        }
+      )
     };
   });
 
@@ -145,6 +230,68 @@ export async function ticketRoutes(app: FastifyInstance) {
               params.id
           })
       };
+    }
+  );
+
+  app.get(
+    "/api/v1/tickets/:id/messages/:messageId/reactions",
+    async request => {
+      const auth =
+        await requireAuth(
+          request
+        );
+
+      const params =
+        messageReactionParamsSchema.parse(
+          request.params
+        );
+
+      return {
+        reactions:
+          await listTicketMessageReactions({
+            companyId:
+              auth.companyId,
+            ticketId:
+              params.id,
+            messageId:
+              params.messageId
+          })
+      };
+    }
+  );
+
+  app.post(
+    "/api/v1/tickets/:id/messages/:messageId/reaction",
+    async request => {
+      const auth =
+        await requireAuth(
+          request
+        );
+
+      const params =
+        messageReactionParamsSchema.parse(
+          request.params
+        );
+
+      const input =
+        reactionSchema.parse(
+          request.body
+        );
+
+      return sendTicketReaction({
+        companyId:
+          auth.companyId,
+        ticketId:
+          params.id,
+        messageId:
+          params.messageId,
+        membershipId:
+          auth.membershipId,
+        role:
+          auth.role,
+        emoji:
+          input.emoji
+      });
     }
   );
 
@@ -323,7 +470,9 @@ export async function ticketRoutes(app: FastifyInstance) {
           userId: auth.userId,
           membershipId: auth.membershipId,
           role: auth.role,
-          text: input.text
+          text: input.text,
+          replyToMessageId:
+            input.replyToMessageId
         })
       };
     }

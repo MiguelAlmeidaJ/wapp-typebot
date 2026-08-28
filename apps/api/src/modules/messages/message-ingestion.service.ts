@@ -1,6 +1,9 @@
 import type { WhatsAppConnection } from "../../generated/prisma/client.js";
 import { prisma } from "../../lib/database.js";
 import { toPrismaJson } from "../../lib/prisma-json.js";
+import {
+  scheduleAutomationEvaluation
+} from "../../jobs/automation.dispatch.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
 import { recordTicketEvent } from "../tickets/ticket-event.service.js";
 import { scheduleMessageMediaCapture } from "../media/media-capture.service.js";
@@ -8,6 +11,11 @@ import {
   parseEvolutionMessage,
   type ParsedEvolutionMessage
 } from "./evolution-message.parser.js";
+import {
+  canUsePushName,
+  contactCreationName,
+  shouldPromoteWhatsappName
+} from "./contact-identity.js";
 
 function activeTicketKey(
   connectionId: string,
@@ -16,17 +24,22 @@ function activeTicketKey(
   return `${connectionId}:${contactId}`;
 }
 
-function displayName(message: ParsedEvolutionMessage) {
-  if (message.isGroup) {
-    return `Grupo ${message.remoteJid.split("@")[0]}`;
-  }
-
-  return (
-    message.pushName ??
-    message.phoneNumber ??
-    message.remoteJid.split("@")[0] ??
-    "Contato"
-  );
+function displayName(
+  message:
+    ParsedEvolutionMessage
+) {
+  return contactCreationName({
+    fromMe:
+      message.fromMe,
+    isGroup:
+      message.isGroup,
+    pushName:
+      message.pushName,
+    phoneNumber:
+      message.phoneNumber,
+    remoteJid:
+      message.remoteJid
+  });
 }
 
 function preview(message: ParsedEvolutionMessage) {
@@ -70,6 +83,59 @@ export async function ingestEvolutionMessage(
     };
   }
 
+  const existingContact =
+    await prisma.contact.findUnique({
+      where: {
+        companyId_remoteJid: {
+          companyId:
+            connection.companyId,
+          remoteJid:
+            parsed.remoteJid
+        }
+      },
+      select: {
+        name: true,
+        whatsappName:
+          true,
+        phoneNumber:
+          true,
+        remoteJid:
+          true
+      }
+    });
+
+  const validPushName =
+    canUsePushName({
+      fromMe:
+        parsed.fromMe,
+      isGroup:
+        parsed.isGroup,
+      pushName:
+        parsed.pushName
+    });
+
+  const promoteWhatsappName =
+    Boolean(
+      validPushName &&
+      parsed.pushName &&
+      existingContact &&
+      shouldPromoteWhatsappName({
+        currentName:
+          existingContact.name,
+        currentWhatsappName:
+          existingContact
+            .whatsappName,
+        remoteJid:
+          existingContact
+            .remoteJid,
+        phoneNumber:
+          existingContact
+            .phoneNumber,
+        incomingPushName:
+          parsed.pushName
+      })
+    );
+
   const contact = await prisma.contact.upsert({
     where: {
       companyId_remoteJid: {
@@ -78,8 +144,17 @@ export async function ingestEvolutionMessage(
       }
     },
     update: {
-      ...(parsed.pushName && !parsed.isGroup
-        ? { whatsappName: parsed.pushName }
+      ...(validPushName
+        ? {
+            whatsappName:
+              parsed.pushName,
+            ...(promoteWhatsappName
+              ? {
+                  name:
+                    parsed.pushName
+                }
+              : {})
+          }
         : {}),
       ...(parsed.phoneNumber
         ? { phoneNumber: parsed.phoneNumber }
@@ -92,7 +167,14 @@ export async function ingestEvolutionMessage(
       phoneNumber: parsed.phoneNumber,
       name: displayName(parsed),
       whatsappName:
-        parsed.pushName && !parsed.isGroup
+        canUsePushName({
+          fromMe:
+            parsed.fromMe,
+          isGroup:
+            parsed.isGroup,
+          pushName:
+            parsed.pushName
+        })
           ? parsed.pushName
           : undefined,
       isGroup: parsed.isGroup,
@@ -235,6 +317,32 @@ export async function ingestEvolutionMessage(
     scheduleMessageMediaCapture(
       message.id
     );
+  }
+
+  if (!parsed.fromMe) {
+    if (!before) {
+      scheduleAutomationEvaluation({
+        companyId:
+          connection.companyId,
+        ticketId:
+          ticket.id,
+        sourceMessageId:
+          message.id,
+        trigger:
+          "TICKET_CREATED"
+      });
+    }
+
+    scheduleAutomationEvaluation({
+      companyId:
+        connection.companyId,
+      ticketId:
+        ticket.id,
+      sourceMessageId:
+        message.id,
+      trigger:
+        "INBOUND_MESSAGE"
+    });
   }
 
   return {

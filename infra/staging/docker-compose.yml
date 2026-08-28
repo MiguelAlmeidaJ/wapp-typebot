@@ -1,0 +1,200 @@
+name: wapp-staging-rehearsal
+
+x-api-environment: &api-environment
+  NODE_ENV: production
+  HOST: 0.0.0.0
+  PORT: "4000"
+  WEB_URL: http://127.0.0.1:${WAPP_STAGING_PORT:-18080}
+  TRUST_PROXY: "true"
+  DATABASE_URL: mysql://wapp_stage:wapp_stage_password@mysql:3306/wapp_stage
+  REDIS_URL: redis://:wapp_stage_redis_password@redis:6379/0
+  API_BODY_MAX_BYTES: "1048576"
+  JWT_SECRET: staging_jwt_secret_abcdefghijklmnopqrstuvwxyz_123456789
+  METRICS_TOKEN: staging_metrics_token_abcdefghijklmnopqrstuvwxyz_123456
+  ACCESS_TOKEN_TTL_SECONDS: "900"
+  REFRESH_TOKEN_TTL_DAYS: "30"
+  COOKIE_SECURE: "false"
+  EVOLUTION_BASE_URL: http://evolution-stub:8080
+  EVOLUTION_API_KEY: staging_evolution_api_key_abcdefghijklmnopqrstuvwxyz
+  EVOLUTION_WEBHOOK_BASE_URL: http://127.0.0.1:${WAPP_STAGING_PORT:-18080}
+  EVOLUTION_WEBHOOK_SECRET: staging_webhook_secret_abcdefghijklmnopqrstuvwxyz
+  EVOLUTION_HEALTHCHECK_INTERVAL_SECONDS: "3600"
+  WHATSAPP_SESSION_PATH: .runtime/whatsapp
+  MEDIA_STORAGE_DRIVER: s3
+  MEDIA_STORAGE_PATH: .runtime/media
+  MEDIA_MAX_BYTES: "26214400"
+  S3_BUCKET: wapp-stage
+  S3_REGION: us-east-1
+  S3_ENDPOINT: http://minio:9000
+  S3_FORCE_PATH_STYLE: "true"
+  S3_ACCESS_KEY_ID: minioadmin
+  S3_SECRET_ACCESS_KEY: minioadmin123
+  TYPEBOT_URL: ""
+  JOBS_EMBEDDED_WORKER: "false"
+  JOBS_MEDIA_CAPTURE_CONCURRENCY: "2"
+  JOBS_MEDIA_CAPTURE_ATTEMPTS: "3"
+  MAINTENANCE_ENABLED: "true"
+  MAINTENANCE_INTERVAL_HOURS: "6"
+  SESSION_RETENTION_DAYS: "30"
+  MAINTENANCE_STALE_MEDIA_MINUTES: "30"
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: wapp_stage
+      MYSQL_USER: wapp_stage
+      MYSQL_PASSWORD: wapp_stage_password
+      MYSQL_ROOT_PASSWORD: wapp_stage_root_password
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysqladmin ping --host=127.0.0.1 --user=root --silent"
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "no",
+        "--requirepass",
+        "wapp_stage_redis_password"
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli -a wapp_stage_redis_password ping | grep PONG"
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  minio:
+    image: minio/minio:latest
+    command:
+      [
+        "server",
+        "/data"
+      ]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - >
+        until mc alias set local http://minio:9000 minioadmin minioadmin123;
+        do sleep 2; done;
+        mc mb --ignore-existing local/wapp-stage;
+        mc anonymous set none local/wapp-stage;
+    restart: "no"
+
+  migrate:
+    image: wapp-stage-api:local
+    build:
+      context: ../..
+      dockerfile: infra/production/api.Dockerfile
+      target: migrate
+    environment: *api-environment
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: wapp-stage-api:local
+    build:
+      context: ../..
+      dockerfile: infra/production/api.Dockerfile
+      target: runtime
+    environment: *api-environment
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        ]
+      interval: 5s
+      timeout: 4s
+      retries: 30
+      start_period: 10s
+
+  worker:
+    image: wapp-stage-api:local
+    build:
+      context: ../..
+      dockerfile: infra/production/api.Dockerfile
+      target: runtime
+    command:
+      [
+        "node",
+        "dist/worker.js"
+      ]
+    environment: *api-environment
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+  web:
+    image: wapp-stage-web:local
+    build:
+      context: ../..
+      dockerfile: infra/production/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://127.0.0.1:${WAPP_STAGING_PORT:-18080}
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/login').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        ]
+      interval: 5s
+      timeout: 4s
+      retries: 30
+      start_period: 10s
+
+  proxy:
+    image: caddy:2-alpine
+    ports:
+      - "127.0.0.1:${WAPP_STAGING_PORT:-18080}:8080"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy

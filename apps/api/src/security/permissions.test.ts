@@ -12,6 +12,10 @@ import {
 const allPermissions:
   WappPermission[] = [
     "admin.test",
+    "audit.read",
+    "observability.read",
+    "automations.read",
+    "automations.manage",
     "contacts.read",
     "contacts.manage",
     "quickReplies.read",
@@ -65,6 +69,7 @@ describe(
         for (
           const permission
           of [
+            "audit.read",
             "team.manage",
             "queues.manage",
             "whatsapp.manage",
@@ -84,6 +89,7 @@ describe(
         for (
           const permission
           of [
+            "observability.read",
             "contacts.manage",
             "quickReplies.manage",
             "tags.manage",
@@ -136,6 +142,8 @@ describe(
           const permission
           of [
             "admin.test",
+            "observability.read",
+            "audit.read",
             "quickReplies.manage",
             "tags.manage",
             "sla.manage",
@@ -154,6 +162,58 @@ describe(
             `AGENT must not have ${permission}`
           );
         }
+      }
+    );
+  }
+);
+
+
+describe(
+  "automation permissions",
+  () => {
+    it(
+      "automation capability follows operational roles",
+      () => {
+        for (
+          const role
+          of [
+            "OWNER",
+            "ADMIN",
+            "SUPERVISOR"
+          ] as const
+        ) {
+          assert.equal(
+            roleHasPermission(
+              role,
+              "automations.read"
+            ),
+            true
+          );
+
+          assert.equal(
+            roleHasPermission(
+              role,
+              "automations.manage"
+            ),
+            true
+          );
+        }
+
+        assert.equal(
+          roleHasPermission(
+            "AGENT",
+            "automations.read"
+          ),
+          true
+        );
+
+        assert.equal(
+          roleHasPermission(
+            "AGENT",
+            "automations.manage"
+          ),
+          false
+        );
       }
     );
   }

@@ -2,6 +2,10 @@ import type { WappRole } from "../lib/tokens.js";
 
 export type WappPermission =
   | "admin.test"
+  | "audit.read"
+  | "observability.read"
+  | "automations.read"
+  | "automations.manage"
   | "contacts.read"
   | "contacts.manage"
   | "quickReplies.read"
@@ -23,7 +27,11 @@ const permissionsByRole: Record<
   readonly WappPermission[]
 > = {
   OWNER: [
+    "automations.manage",
+    "automations.read",
     "admin.test",
+    "audit.read",
+    "observability.read",
     "contacts.read",
     "contacts.manage",
     "quickReplies.read",
@@ -41,7 +49,11 @@ const permissionsByRole: Record<
     "whatsapp.test"
   ],
   ADMIN: [
+    "automations.manage",
+    "automations.read",
     "admin.test",
+    "audit.read",
+    "observability.read",
     "contacts.read",
     "contacts.manage",
     "quickReplies.read",
@@ -59,6 +71,9 @@ const permissionsByRole: Record<
     "whatsapp.test"
   ],
   SUPERVISOR: [
+    "automations.manage",
+    "automations.read",
+    "observability.read",
     "contacts.read",
     "contacts.manage",
     "quickReplies.read",
@@ -73,6 +88,7 @@ const permissionsByRole: Record<
     "whatsapp.test"
   ],
   AGENT: [
+    "automations.read",
     "contacts.read",
     "contacts.manage",
     "quickReplies.read",

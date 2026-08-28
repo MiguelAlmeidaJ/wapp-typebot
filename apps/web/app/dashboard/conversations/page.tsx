@@ -24,6 +24,9 @@ interface Contact {
   name: string;
   remoteJid: string;
   phoneNumber: string | null;
+  whatsappName:
+    | string
+    | null;
   isGroup: boolean;
 }
 
@@ -104,6 +107,20 @@ type MessageType =
   | "CONTACT"
   | "UNKNOWN";
 
+interface MessageReaction {
+  id: string;
+  reactorKey: string;
+  reactorJid:
+    | string
+    | null;
+  fromMe: boolean;
+  emoji: string;
+  actorName:
+    | string
+    | null;
+  updatedAt: string;
+}
+
 interface Message {
   id: string;
   externalId: string;
@@ -121,6 +138,29 @@ interface Message {
   deliveryError: string | null;
   timestamp: string;
   sentByUserId: string | null;
+  quotedExternalId:
+    | string
+    | null;
+  quotedMessage:
+    | {
+        id: string;
+        externalId: string;
+        direction:
+          | "INBOUND"
+          | "OUTBOUND";
+        type:
+          MessageType;
+        body:
+          | string
+          | null;
+        mediaFileName:
+          | string
+          | null;
+        timestamp:
+          string;
+      }
+    | null;
+  reactions: MessageReaction[];
 }
 
 interface QuickReply {
@@ -173,6 +213,28 @@ interface QueueOption {
   members?: Array<{
     membershipId: string;
   }>;
+}
+
+type TicketStatusFilter =
+  | "ACTIVE"
+  | "PENDING"
+  | "OPEN";
+
+type TicketConversationFilter =
+  | "ALL"
+  | "DIRECT"
+  | "GROUP";
+
+interface InboxFilterState {
+  search: string;
+  status:
+    TicketStatusFilter;
+  queueId: string;
+  assigneeId: string;
+  unreadOnly: boolean;
+  tagId: string;
+  conversationType:
+    TicketConversationFilter;
 }
 
 interface TicketsResponse {
@@ -242,6 +304,100 @@ function visibleMessageBody(
   }
 
   return message.body;
+}
+
+function groupedReactions(
+  reactions:
+    MessageReaction[]
+) {
+  const groups =
+    new Map<
+      string,
+      {
+        emoji: string;
+        count: number;
+        fromMe: boolean;
+      }
+    >();
+
+  for (
+    const reaction
+    of reactions
+  ) {
+    const current =
+      groups.get(
+        reaction.emoji
+      );
+
+    groups.set(
+      reaction.emoji,
+      {
+        emoji:
+          reaction.emoji,
+        count:
+          (current?.count ?? 0) +
+          1,
+        fromMe:
+          Boolean(
+            current?.fromMe ||
+            reaction.fromMe
+          )
+      }
+    );
+  }
+
+  return Array.from(
+    groups.values()
+  );
+}
+
+function ownReaction(
+  message: Message
+) {
+  return message.reactions.find(
+    reaction =>
+      reaction.fromMe
+  );
+}
+
+function quotedMessagePreview(
+  message:
+    NonNullable<
+      Message[
+        "quotedMessage"
+      ]
+    >
+) {
+  if (
+    message.body &&
+    message.body.trim()
+  ) {
+    return message.body;
+  }
+
+  if (
+    message.mediaFileName
+  ) {
+    return message.mediaFileName;
+  }
+
+  return messageFallback(
+    message.type
+  );
+}
+
+function replyTargetPreview(
+  message: Message
+) {
+  return (
+    visibleMessageBody(
+      message
+    ) ??
+    message.mediaFileName ??
+    messageFallback(
+      message.type
+    )
+  );
 }
 
 function deliveryStatusPresentation(
@@ -441,11 +597,35 @@ function mergeMessagePages(
   );
 }
 
+const REACTION_OPTIONS = [
+  "👍",
+  "❤️",
+  "😂",
+  "😮",
+  "😢",
+  "🙏"
+] as const;
+
 export default function ConversationsPage() {
   const router = useRouter();
   const { session, loading, request, subscribe } = useAuth();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [inboxFilters, setInboxFilters] =
+    useState<InboxFilterState>({
+      search: "",
+      status:
+        "ACTIVE",
+      queueId: "",
+      assigneeId: "",
+      unreadOnly:
+        false,
+      tagId: "",
+      conversationType:
+        "ALL"
+    });
+  const [debouncedTicketSearch, setDebouncedTicketSearch] =
+    useState("");
   const [queues, setQueues] = useState<QueueOption[]>([]);
   const [team, setTeam] = useState<TeamMembership[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -518,6 +698,12 @@ export default function ConversationsPage() {
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [text, setText] = useState("");
+  const [replyingTo, setReplyingTo] =
+    useState<Message | null>(null);
+  const [reactionPickerMessageId, setReactionPickerMessageId] =
+    useState<string | null>(null);
+  const [reactingMessageId, setReactingMessageId] =
+    useState<string | null>(null);
   const [attachment, setAttachment] =
     useState<File | null>(null);
   const [attachmentPreviewUrl, setAttachmentPreviewUrl] =
@@ -596,6 +782,32 @@ export default function ConversationsPage() {
     ]
   );
 
+  const activeInboxFilterCount =
+    [
+      inboxFilters.status !==
+        "ACTIVE",
+      Boolean(
+        inboxFilters.queueId
+      ),
+      Boolean(
+        inboxFilters.assigneeId
+      ),
+      inboxFilters.unreadOnly,
+      Boolean(
+        inboxFilters.tagId
+      ),
+      inboxFilters.conversationType !==
+        "ALL"
+    ].filter(
+      Boolean
+    ).length;
+
+  const hasInboxFilter =
+    Boolean(
+      debouncedTicketSearch ||
+      activeInboxFilterCount
+    );
+
   const pendingCount = tickets.filter(
     ticket => ticket.status === "PENDING"
   ).length;
@@ -648,18 +860,101 @@ export default function ConversationsPage() {
   );
 
   const loadTickets = useCallback(async () => {
-    const payload = await request<TicketsResponse>(
-      "/api/v1/tickets?status=ACTIVE"
+    const params =
+      new URLSearchParams({
+        status:
+          inboxFilters.status
+      });
+
+    if (
+      debouncedTicketSearch
+    ) {
+      params.set(
+        "q",
+        debouncedTicketSearch
+      );
+    }
+
+    if (
+      inboxFilters.queueId
+    ) {
+      params.set(
+        "queueId",
+        inboxFilters.queueId
+      );
+    }
+
+    if (
+      inboxFilters.assigneeId
+    ) {
+      params.set(
+        "assigneeId",
+        inboxFilters.assigneeId
+      );
+    }
+
+    if (
+      inboxFilters.unreadOnly
+    ) {
+      params.set(
+        "unreadOnly",
+        "true"
+      );
+    }
+
+    if (
+      inboxFilters.tagId
+    ) {
+      params.set(
+        "tagId",
+        inboxFilters.tagId
+      );
+    }
+
+    if (
+      inboxFilters.conversationType !==
+      "ALL"
+    ) {
+      params.set(
+        "conversationType",
+        inboxFilters.conversationType
+      );
+    }
+
+    const payload =
+      await request<TicketsResponse>(
+        `/api/v1/tickets?${params.toString()}`
+      );
+
+    setTickets(
+      payload.tickets
     );
 
-    setTickets(payload.tickets);
-    setSelectedId(current => {
-      if (current && payload.tickets.some(ticket => ticket.id === current)) {
-        return current;
+    setSelectedId(
+      current => {
+        if (!current) {
+          return null;
+        }
+
+        return payload.tickets.some(
+          ticket =>
+            ticket.id ===
+            current
+        )
+          ? current
+          : null;
       }
-      return payload.tickets[0]?.id ?? null;
-    });
-  }, [request]);
+    );
+  }, [
+    debouncedTicketSearch,
+    inboxFilters.assigneeId,
+    inboxFilters.conversationType,
+    inboxFilters.queueId,
+    inboxFilters.status,
+    inboxFilters.tagId,
+    inboxFilters.unreadOnly,
+    request
+  ]);
 
   const loadReferenceData = useCallback(async () => {
     const [queuesPayload, teamPayload, presencePayload] = await Promise.all([
@@ -1003,6 +1298,37 @@ export default function ConversationsPage() {
     ]
   );
 
+  const refreshMessageReactions = useCallback(
+    async (
+      ticketId: string,
+      messageId: string
+    ) => {
+      const payload =
+        await request<{
+          reactions:
+            MessageReaction[];
+        }>(
+          `/api/v1/tickets/${ticketId}/messages/${messageId}/reactions`
+        );
+
+      setMessages(
+        current =>
+          current.map(
+            message =>
+              message.id ===
+              messageId
+                ? {
+                    ...message,
+                    reactions:
+                      payload.reactions
+                  }
+                : message
+          )
+      );
+    },
+    [request]
+  );
+
   const refreshLatestMessages = useCallback(
     async (
       ticketId: string,
@@ -1038,6 +1364,26 @@ export default function ConversationsPage() {
   );
 
   useEffect(() => {
+    const timeout =
+      window.setTimeout(
+        () => {
+          setDebouncedTicketSearch(
+            inboxFilters.search
+              .trim()
+          );
+        },
+        280
+      );
+
+    return () =>
+      window.clearTimeout(
+        timeout
+      );
+  }, [
+    inboxFilters.search
+  ]);
+
+  useEffect(() => {
     if (!loading && !session) {
       router.replace("/login");
       return;
@@ -1067,6 +1413,7 @@ export default function ConversationsPage() {
   useEffect(() => {
     if (!selectedId) {
       setMessages([]);
+      setReplyingTo(null);
       setMessagePagination({
         hasMoreBefore:
           false,
@@ -1081,6 +1428,8 @@ export default function ConversationsPage() {
       setNotesOpen(false);
       return;
     }
+
+    setReplyingTo(null);
 
     if (
       skipNextSelectedLoadRef.current
@@ -1147,6 +1496,22 @@ export default function ConversationsPage() {
       }
 
       if (
+        event.type ===
+          "message.reaction.updated" &&
+        selectedId &&
+        event.ticketId ===
+          selectedId &&
+        event.messageId
+      ) {
+        void refreshMessageReactions(
+          selectedId,
+          event.messageId
+        ).catch(() => {
+          // The target can be outside the currently loaded P1.21 window.
+        });
+      }
+
+      if (
         event.type === "note.created" &&
         selectedId &&
         (!event.ticketId ||
@@ -1192,6 +1557,7 @@ export default function ConversationsPage() {
     loadReferenceData,
     loadTickets,
     refreshLatestMessages,
+    refreshMessageReactions,
     selectedId,
     session,
     subscribe
@@ -2005,6 +2371,173 @@ export default function ConversationsPage() {
     setAttachment(file);
   }
 
+  async function reactToMessage(
+    message: Message,
+    emoji: string
+  ) {
+    if (
+      !selectedId ||
+      reactingMessageId
+    ) {
+      return;
+    }
+
+    const current =
+      ownReaction(
+        message
+      );
+
+    const nextEmoji =
+      current?.emoji ===
+      emoji
+        ? ""
+        : emoji;
+
+    setReactingMessageId(
+      message.id
+    );
+
+    setReactionPickerMessageId(
+      null
+    );
+
+    try {
+      const payload =
+        await request<{
+          messageId: string;
+          reactions:
+            MessageReaction[];
+        }>(
+          `/api/v1/tickets/${selectedId}/messages/${message.id}/reaction`,
+          {
+            method:
+              "POST",
+            body:
+              JSON.stringify({
+                emoji:
+                  nextEmoji
+              })
+          }
+        );
+
+      setMessages(
+        currentMessages =>
+          currentMessages.map(
+            item =>
+              item.id ===
+              message.id
+                ? {
+                    ...item,
+                    reactions:
+                      payload.reactions
+                  }
+                : item
+          )
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Não foi possível reagir à mensagem."
+      );
+    } finally {
+      setReactingMessageId(
+        null
+      );
+    }
+  }
+
+  function startReply(
+    message: Message
+  ) {
+    if (
+      recording
+    ) {
+      return;
+    }
+
+    setReplyingTo(
+      message
+    );
+
+    window.setTimeout(
+      () => {
+        composerTextRef
+          .current
+          ?.focus();
+      },
+      0
+    );
+  }
+
+  async function jumpToQuotedMessage(
+    message: Message
+  ) {
+    const target =
+      message
+        .quotedMessage;
+
+    if (
+      !target ||
+      !selectedId
+    ) {
+      return;
+    }
+
+    const loaded =
+      messages.some(
+        item =>
+          item.id ===
+          target.id
+      );
+
+    if (loaded) {
+      setFocusedMessageId(
+        target.id
+      );
+
+      document
+        .querySelector(
+          `[data-message-id="${target.id}"]`
+        )
+        ?.scrollIntoView({
+          behavior:
+            "smooth",
+          block:
+            "center"
+        });
+
+      window.setTimeout(
+        () => {
+          setFocusedMessageId(
+            current =>
+              current ===
+              target.id
+                ? null
+                : current
+          );
+        },
+        3_000
+      );
+
+      return;
+    }
+
+    try {
+      await loadMessages(
+        selectedId,
+        {
+          around:
+            target.id
+        }
+      );
+    } catch {
+      setError(
+        "Não foi possível abrir a mensagem citada."
+      );
+    }
+  }
+
   async function handleSend(
     event: FormEvent<HTMLFormElement>
   ) {
@@ -2068,13 +2601,21 @@ export default function ConversationsPage() {
           {
             method: "POST",
             body: JSON.stringify({
-              text: text.trim()
+              text:
+                text.trim(),
+              ...(replyingTo
+                ? {
+                    replyToMessageId:
+                      replyingTo.id
+                  }
+                : {})
             })
           }
         );
       }
 
       setText("");
+      setReplyingTo(null);
 
       await Promise.all([
         loadMessages(selectedId),
@@ -2093,6 +2634,25 @@ export default function ConversationsPage() {
     }
   }
 
+  function clearInboxFilters() {
+    setInboxFilters({
+      search: "",
+      status:
+        "ACTIVE",
+      queueId: "",
+      assigneeId: "",
+      unreadOnly:
+        false,
+      tagId: "",
+      conversationType:
+        "ALL"
+    });
+
+    setDebouncedTicketSearch(
+      ""
+    );
+  }
+
   async function handleClose() {
     if (!selectedId) return;
     setClosing(true);
@@ -2102,6 +2662,7 @@ export default function ConversationsPage() {
         method: "POST"
       });
       setMessages([]);
+      setReplyingTo(null);
       setSelectedId(null);
       await loadTickets();
     } catch (caught) {
@@ -2144,6 +2705,13 @@ export default function ConversationsPage() {
           </button>
           <button
             className="ghost-button"
+            onClick={() => router.push("/dashboard/automations")}
+            type="button"
+          >
+            Automações
+          </button>
+          <button
+            className="ghost-button"
             onClick={() => router.push("/dashboard/connections")}
             type="button"
           >
@@ -2171,19 +2739,308 @@ export default function ConversationsPage() {
 
       <section className="inbox">
         <aside className="ticket-list">
-          <div className="ticket-list__heading ticket-list__heading--stacked">
-            <strong>Atendimentos ativos</strong>
-            <div className="ticket-counters">
-              <span>{pendingCount} aguardando</span>
-              <span>{openCount} em atendimento</span>
+          <div className="ticket-list__heading ticket-list__heading--filters">
+            <div className="ticket-list__title-row">
+              <div>
+                <strong>
+                  Atendimentos
+                </strong>
+                <span>
+                  {tickets.length}
+                  {hasInboxFilter
+                    ? " encontrados"
+                    : " ativos"}
+                </span>
+              </div>
+
+              {hasInboxFilter && (
+                <button
+                  className="inbox-filter-clear"
+                  onClick={
+                    clearInboxFilters
+                  }
+                  type="button"
+                >
+                  Limpar
+                </button>
+              )}
             </div>
+
+            <label className="inbox-ticket-search">
+              <span>
+                Buscar
+              </span>
+              <input
+                onChange={event =>
+                  setInboxFilters(
+                    current => ({
+                      ...current,
+                      search:
+                        event.target.value
+                    })
+                  )
+                }
+                placeholder="Nome, número ou mensagem"
+                type="search"
+                value={
+                  inboxFilters.search
+                }
+              />
+            </label>
+
+            <div className="inbox-status-filters">
+              {(
+                [
+                  [
+                    "ACTIVE",
+                    "Todos"
+                  ],
+                  [
+                    "PENDING",
+                    "Aguardando"
+                  ],
+                  [
+                    "OPEN",
+                    "Atendendo"
+                  ]
+                ] as const
+              ).map(
+                ([
+                  value,
+                  label
+                ]) => (
+                  <button
+                    className={
+                      inboxFilters.status ===
+                      value
+                        ? "inbox-status-chip inbox-status-chip--active"
+                        : "inbox-status-chip"
+                    }
+                    key={value}
+                    onClick={() =>
+                      setInboxFilters(
+                        current => ({
+                          ...current,
+                          status:
+                            value
+                        })
+                      )
+                    }
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                )
+              )}
+
+              <button
+                className={
+                  inboxFilters.unreadOnly
+                    ? "inbox-status-chip inbox-status-chip--active"
+                    : "inbox-status-chip"
+                }
+                onClick={() =>
+                  setInboxFilters(
+                    current => ({
+                      ...current,
+                      unreadOnly:
+                        !current.unreadOnly
+                    })
+                  )
+                }
+                type="button"
+              >
+                Não lidas
+              </button>
+            </div>
+
+            <details
+              className={
+                activeInboxFilterCount > 0
+                  ? "inbox-advanced-filters inbox-advanced-filters--active"
+                  : "inbox-advanced-filters"
+              }
+            >
+              <summary>
+                Filtros
+                {activeInboxFilterCount > 0 && (
+                  <span>
+                    {activeInboxFilterCount}
+                  </span>
+                )}
+              </summary>
+
+              <div className="inbox-advanced-filters__body">
+                <label>
+                  <span>
+                    Fila
+                  </span>
+                  <select
+                    onChange={event =>
+                      setInboxFilters(
+                        current => ({
+                          ...current,
+                          queueId:
+                            event.target.value
+                        })
+                      )
+                    }
+                    value={
+                      inboxFilters.queueId
+                    }
+                  >
+                    <option value="">
+                      Todas
+                    </option>
+                    <option value="NONE">
+                      Sem fila
+                    </option>
+                    {queues.map(
+                      queue => (
+                        <option
+                          key={
+                            queue.id
+                          }
+                          value={
+                            queue.id
+                          }
+                        >
+                          {queue.name}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </label>
+
+                <label>
+                  <span>
+                    Atendente
+                  </span>
+                  <select
+                    onChange={event =>
+                      setInboxFilters(
+                        current => ({
+                          ...current,
+                          assigneeId:
+                            event.target.value
+                        })
+                      )
+                    }
+                    value={
+                      inboxFilters.assigneeId
+                    }
+                  >
+                    <option value="">
+                      Todos
+                    </option>
+                    <option value="ME">
+                      Meus atendimentos
+                    </option>
+                    <option value="NONE">
+                      Sem atendente
+                    </option>
+                    {team.map(
+                      membership => (
+                        <option
+                          key={
+                            membership.id
+                          }
+                          value={
+                            membership.id
+                          }
+                        >
+                          {membership.user.name}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </label>
+
+                <label>
+                  <span>
+                    Etiqueta
+                  </span>
+                  <select
+                    onChange={event =>
+                      setInboxFilters(
+                        current => ({
+                          ...current,
+                          tagId:
+                            event.target.value
+                        })
+                      )
+                    }
+                    value={
+                      inboxFilters.tagId
+                    }
+                  >
+                    <option value="">
+                      Todas
+                    </option>
+                    {tags.map(
+                      tag => (
+                        <option
+                          key={
+                            tag.id
+                          }
+                          value={
+                            tag.id
+                          }
+                        >
+                          {tag.name}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </label>
+
+                <label>
+                  <span>
+                    Tipo
+                  </span>
+                  <select
+                    onChange={event =>
+                      setInboxFilters(
+                        current => ({
+                          ...current,
+                          conversationType:
+                            event.target.value as
+                              TicketConversationFilter
+                        })
+                      )
+                    }
+                    value={
+                      inboxFilters.conversationType
+                    }
+                  >
+                    <option value="ALL">
+                      Todos
+                    </option>
+                    <option value="DIRECT">
+                      Contatos
+                    </option>
+                    <option value="GROUP">
+                      Grupos
+                    </option>
+                  </select>
+                </label>
+              </div>
+            </details>
           </div>
 
           <div className="ticket-list__items">
             {tickets.length === 0 ? (
               <div className="ticket-list__empty">
-                <strong>Nenhuma conversa ativa.</strong>
-                <p>Novas mensagens entram aqui em tempo real.</p>
+                <strong>
+                  {hasInboxFilter
+                    ? "Nenhuma conversa encontrada."
+                    : "Nenhuma conversa ativa."}
+                </strong>
+                <p>
+                  {hasInboxFilter
+                    ? "Ajuste ou limpe os filtros para ampliar a busca."
+                    : "Novas mensagens entram aqui em tempo real."}
+                </p>
               </div>
             ) : (
               tickets.map(ticket => (
@@ -2236,21 +3093,317 @@ export default function ConversationsPage() {
 
         <section className="conversation-panel">
           {!selectedTicket ? (
-            <div className="chat-empty">
-              <div className="chat-empty__mark">W</div>
-              <strong>Suas conversas vão aparecer aqui.</strong>
-              <p>O realtime substitui o polling de três segundos do P0.6.</p>
+            <div className="conversation-home conversation-home--refined">
+              <header className="conversation-home-top">
+                <div className="conversation-home-top__copy">
+                  <span className="eyebrow">
+                    Central de atendimento
+                  </span>
+
+                  <h2>
+                    O que precisa de atenção agora
+                  </h2>
+
+                  <p>
+                    {pendingCount > 0
+                      ? `${pendingCount} conversa${pendingCount === 1 ? "" : "s"} aguardando atendimento.`
+                      : "Nenhuma conversa aguardando. A operação está em dia."}
+                  </p>
+                </div>
+
+                <div className="conversation-home-summary">
+                  <div>
+                    <strong>
+                      {pendingCount}
+                    </strong>
+                    <span>
+                      aguardando
+                    </span>
+                  </div>
+
+                  <div>
+                    <strong>
+                      {openCount}
+                    </strong>
+                    <span>
+                      em atendimento
+                    </span>
+                  </div>
+
+                  <div>
+                    <strong>
+                      {onlineMembershipIds.length}
+                    </strong>
+                    <span>
+                      equipe online
+                    </span>
+                  </div>
+                </div>
+              </header>
+
+              <div className="conversation-home-grid">
+                <section className="conversation-focus-card">
+                  <header className="conversation-section-header">
+                    <div>
+                      <span className="conversation-section-kicker">
+                        Prioridade
+                      </span>
+                      <h3>
+                        Aguardando atendimento
+                      </h3>
+                    </div>
+
+                    <span className="conversation-section-count">
+                      {pendingCount}
+                    </span>
+                  </header>
+
+                  <div className="conversation-priority-list">
+                    {tickets
+                      .filter(
+                        ticket =>
+                          ticket.status ===
+                          "PENDING"
+                      )
+                      .slice(
+                        0,
+                        8
+                      )
+                      .map(
+                        ticket => (
+                          <button
+                            className="conversation-priority-item"
+                            key={
+                              ticket.id
+                            }
+                            onClick={() =>
+                              setSelectedId(
+                                ticket.id
+                              )
+                            }
+                            type="button"
+                          >
+                            <div className="conversation-home__avatar">
+                              {ticket.contact.name
+                                .slice(
+                                  0,
+                                  1
+                                )
+                                .toUpperCase()}
+                            </div>
+
+                            <div className="conversation-priority-item__content">
+                              <div>
+                                <strong>
+                                  {ticket.contact.name}
+                                </strong>
+                                <time>
+                                  {timeLabel(
+                                    ticket.lastMessageAt
+                                  )}
+                                </time>
+                              </div>
+
+                              <p>
+                                {ticketPreview(
+                                  ticket
+                                )}
+                              </p>
+
+                              <span>
+                                {ticket.queue?.name ??
+                                  "Sem fila"}
+                              </span>
+                            </div>
+
+                            <span className="conversation-priority-item__action">
+                              Abrir
+                            </span>
+                          </button>
+                        )
+                      )}
+
+                    {pendingCount === 0 && (
+                      <div className="conversation-priority-empty">
+                        <div>
+                          ✓
+                        </div>
+                        <strong>
+                          Nenhuma conversa esperando
+                        </strong>
+                        <p>
+                          Quando um novo atendimento chegar, ele aparece aqui.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <aside className="conversation-home-side">
+                  <section className="conversation-overview-card">
+                    <header className="conversation-section-header conversation-section-header--compact">
+                      <div>
+                        <span className="conversation-section-kicker">
+                          Operação
+                        </span>
+                        <h3>
+                          Distribuição por fila
+                        </h3>
+                      </div>
+                    </header>
+
+                    <div className="conversation-queue-overview">
+                      <div>
+                        <span>
+                          Sem fila
+                        </span>
+                        <strong>
+                          {tickets.filter(
+                            ticket =>
+                              !ticket.queueId
+                          ).length}
+                        </strong>
+                      </div>
+
+                      {queues
+                        .filter(
+                          queue =>
+                            tickets.some(
+                              ticket =>
+                                ticket.queueId ===
+                                queue.id
+                            )
+                        )
+                        .slice(
+                          0,
+                          5
+                        )
+                        .map(
+                          queue => (
+                            <div
+                              key={
+                                queue.id
+                              }
+                            >
+                              <span>
+                                {queue.name}
+                              </span>
+                              <strong>
+                                {tickets.filter(
+                                  ticket =>
+                                    ticket.queueId ===
+                                    queue.id
+                                ).length}
+                              </strong>
+                            </div>
+                          )
+                        )}
+                    </div>
+                  </section>
+
+                  <section className="conversation-overview-card">
+                    <header className="conversation-section-header conversation-section-header--compact">
+                      <div>
+                        <span className="conversation-section-kicker">
+                          Disponibilidade
+                        </span>
+                        <h3>
+                          Equipe online
+                        </h3>
+                      </div>
+
+                      <span className="conversation-online-dot">
+                        {onlineMembershipIds.length}
+                      </span>
+                    </header>
+
+                    <div className="conversation-team-online">
+                      {team
+                        .filter(
+                          member =>
+                            onlineMembershipIds.includes(
+                              member.id
+                            )
+                        )
+                        .slice(
+                          0,
+                          6
+                        )
+                        .map(
+                          member => (
+                            <div
+                              key={
+                                member.id
+                              }
+                            >
+                              <span className="conversation-team-avatar">
+                                {member.user.name
+                                  .slice(
+                                    0,
+                                    1
+                                  )
+                                  .toUpperCase()}
+                              </span>
+
+                              <div>
+                                <strong>
+                                  {member.user.name}
+                                </strong>
+                                <span>
+                                  {member.role}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        )}
+
+                      {onlineMembershipIds.length === 0 && (
+                        <div className="conversation-team-empty">
+                          Nenhum atendente com presença ativa agora.
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <section className="conversation-overview-note">
+                    <span>
+                      {tickets.length}
+                    </span>
+                    <p>
+                      conversas ativas na caixa neste momento
+                    </p>
+                  </section>
+                </aside>
+              </div>
             </div>
           ) : (
             <>
               <header className="chat-header chat-header--p07">
                 <div className="chat-header__contact">
+                  <button
+                    aria-label="Voltar ao painel de conversas"
+                    className="conversation-home-back"
+                    onClick={() =>
+                      setSelectedId(
+                        null
+                      )
+                    }
+                    title="Painel de conversas"
+                    type="button"
+                  >
+                    ←
+                  </button>
                   <div className="ticket-avatar">
                     {selectedTicket.contact.name.slice(0, 1).toUpperCase()}
                   </div>
                   <div>
                     <strong>{selectedTicket.contact.name}</strong>
                     <span>
+                      {selectedTicket.contact.whatsappName &&
+                      selectedTicket.contact.whatsappName !==
+                        selectedTicket.contact.name
+                        ? `${selectedTicket.contact.whatsappName} · `
+                        : ""}
                       {selectedTicket.contact.phoneNumber ??
                         selectedTicket.contact.remoteJid}
                     </span>
@@ -3132,6 +4285,40 @@ export default function ConversationsPage() {
                           </span>
                         )}
 
+                      {message.quotedExternalId && (
+                        <button
+                          className="message-quoted-preview"
+                          disabled={
+                            !message.quotedMessage
+                          }
+                          onClick={() =>
+                            void jumpToQuotedMessage(
+                              message
+                            )
+                          }
+                          title={
+                            message.quotedMessage
+                              ? "Abrir mensagem citada"
+                              : "Mensagem citada não está disponível no histórico local"
+                          }
+                          type="button"
+                        >
+                          <span>
+                            {message.quotedMessage?.direction ===
+                            "OUTBOUND"
+                              ? "Você"
+                              : selectedTicket.contact.name}
+                          </span>
+                          <p>
+                            {message.quotedMessage
+                              ? quotedMessagePreview(
+                                  message.quotedMessage
+                                )
+                              : "Mensagem citada"}
+                          </p>
+                        </button>
+                      )}
+
                       <MessageMedia
                         fileName={message.mediaFileName}
                         messageId={message.id}
@@ -3151,7 +4338,129 @@ export default function ConversationsPage() {
                           </small>
                         )}
 
+                      {message.reactions.length > 0 && (
+                        <div className="message-reactions">
+                          {groupedReactions(
+                            message.reactions
+                          ).map(
+                            reaction => (
+                              <button
+                                className={
+                                  reaction.fromMe
+                                    ? "message-reaction-badge message-reaction-badge--mine"
+                                    : "message-reaction-badge"
+                                }
+                                disabled={
+                                  reactingMessageId ===
+                                  message.id
+                                }
+                                key={
+                                  reaction.emoji
+                                }
+                                onClick={() =>
+                                  void reactToMessage(
+                                    message,
+                                    reaction.emoji
+                                  )
+                                }
+                                title={
+                                  reaction.fromMe
+                                    ? "Sua reação — clique para remover"
+                                    : "Reagir também"
+                                }
+                                type="button"
+                              >
+                                <span>
+                                  {reaction.emoji}
+                                </span>
+                                {reaction.count > 1 && (
+                                  <small>
+                                    {reaction.count}
+                                  </small>
+                                )}
+                              </button>
+                            )
+                          )}
+                        </div>
+                      )}
+
                       <div className="message-meta">
+                        <div className="message-reaction-action">
+                          <button
+                            aria-label="Reagir à mensagem"
+                            className="message-reaction-trigger"
+                            disabled={
+                              reactingMessageId ===
+                              message.id
+                            }
+                            onClick={() =>
+                              setReactionPickerMessageId(
+                                current =>
+                                  current ===
+                                  message.id
+                                    ? null
+                                    : message.id
+                              )
+                            }
+                            title="Reagir"
+                            type="button"
+                          >
+                            ☺
+                          </button>
+
+                          {reactionPickerMessageId ===
+                            message.id && (
+                            <div className="message-reaction-picker">
+                              {REACTION_OPTIONS.map(
+                                emoji => (
+                                  <button
+                                    className={
+                                      ownReaction(
+                                        message
+                                      )?.emoji ===
+                                      emoji
+                                        ? "message-reaction-option message-reaction-option--active"
+                                        : "message-reaction-option"
+                                    }
+                                    key={emoji}
+                                    onClick={() =>
+                                      void reactToMessage(
+                                        message,
+                                        emoji
+                                      )
+                                    }
+                                    title={
+                                      ownReaction(
+                                        message
+                                      )?.emoji ===
+                                      emoji
+                                        ? "Remover reação"
+                                        : `Reagir com ${emoji}`
+                                    }
+                                    type="button"
+                                  >
+                                    {emoji}
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          aria-label="Responder esta mensagem"
+                          className="message-reply-action"
+                          onClick={() =>
+                            startReply(
+                              message
+                            )
+                          }
+                          title="Responder"
+                          type="button"
+                        >
+                          ↩
+                        </button>
+
                         {message.direction === "OUTBOUND" &&
                           deliveryStatusPresentation(
                             message.deliveryStatus
@@ -3281,6 +4590,39 @@ export default function ConversationsPage() {
                   className="conversation-composer conversation-composer--attachments conversation-composer--voice conversation-composer--quick-replies"
                   onSubmit={handleSend}
                 >
+                  {replyingTo && (
+                    <div className="composer-reply-preview">
+                      <div>
+                        <span>
+                          Respondendo a{" "}
+                          {replyingTo.direction ===
+                          "OUTBOUND"
+                            ? "você"
+                            : selectedTicket.contact.name}
+                        </span>
+                        <strong>
+                          {replyTargetPreview(
+                            replyingTo
+                          )}
+                        </strong>
+                      </div>
+
+                      <button
+                        aria-label="Cancelar resposta"
+                        disabled={sending}
+                        onClick={() =>
+                          setReplyingTo(
+                            null
+                          )
+                        }
+                        title="Cancelar resposta"
+                        type="button"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+
                   <input
                     accept="image/jpeg,image/png,image/webp,image/gif,audio/ogg,audio/mpeg,audio/mp4,audio/webm,audio/wav,video/mp4,video/webm,application/pdf,text/plain,application/zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                     className="composer-file-input"

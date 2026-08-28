@@ -2,6 +2,7 @@ export type RealtimeEventType =
   | "realtime.ready"
   | "message.created"
   | "message.updated"
+  | "message.reaction.updated"
   | "note.created"
   | "quick-reply.updated"
   | "tag.updated"

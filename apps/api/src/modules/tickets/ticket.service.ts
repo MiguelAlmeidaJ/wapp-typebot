@@ -9,12 +9,31 @@ import type { WappRole } from "../../lib/tokens.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
 import { recordTicketEvent } from "./ticket-event.service.js";
 import { storeMedia } from "../media/media-storage.js";
+import { persistReaction } from "../messages/message-reaction.service.js";
 
 export type TicketListStatus =
   | "ACTIVE"
   | "OPEN"
   | "PENDING"
   | "CLOSED";
+
+export interface TicketListFilters {
+  q?: string;
+  queueId?:
+    | string
+    | "NONE";
+  assigneeId?:
+    | string
+    | "ME"
+    | "NONE";
+  actorMembershipId?: string;
+  unreadOnly?: boolean;
+  tagId?: string;
+  conversationType?:
+    | "ALL"
+    | "DIRECT"
+    | "GROUP";
+}
 
 const ticketInclude = {
   contact: true,
@@ -145,25 +164,156 @@ function assertCanOperateTicket(
 
 export async function listTickets(
   companyId: string,
-  status: TicketListStatus
+  status: TicketListStatus,
+  filters:
+    TicketListFilters = {}
 ) {
-  const where: Prisma.TicketWhereInput = {
+  const q =
+    filters.q
+      ?.trim()
+      .slice(
+        0,
+        120
+      );
+
+  const assigneeId =
+    filters.assigneeId ===
+      "ME"
+      ? filters
+          .actorMembershipId
+      : filters.assigneeId ===
+          "NONE"
+        ? null
+        : filters
+            .assigneeId;
+
+  const where:
+    Prisma.TicketWhereInput = {
     companyId,
     ...(status === "ACTIVE"
       ? {
           status: {
-            in: ["OPEN", "PENDING"]
+            in: [
+              "OPEN",
+              "PENDING"
+            ]
           }
         }
-      : { status })
+      : {
+          status
+        }),
+    ...(q
+      ? {
+          OR: [
+            {
+              contact: {
+                name: {
+                  contains:
+                    q
+                }
+              }
+            },
+            {
+              contact: {
+                whatsappName: {
+                  contains:
+                    q
+                }
+              }
+            },
+            {
+              contact: {
+                phoneNumber: {
+                  contains:
+                    q
+                }
+              }
+            },
+            {
+              contact: {
+                remoteJid: {
+                  contains:
+                    q
+                }
+              }
+            },
+            {
+              lastMessage: {
+                contains:
+                  q
+              }
+            }
+          ]
+        }
+      : {}),
+    ...(filters.queueId
+      ? filters.queueId ===
+          "NONE"
+        ? {
+            queueId:
+              null
+          }
+        : {
+            queueId:
+              filters.queueId
+          }
+      : {}),
+    ...(filters.assigneeId
+      ? {
+          assignedMembershipId:
+            assigneeId
+        }
+      : {}),
+    ...(filters.unreadOnly
+      ? {
+          unreadCount: {
+            gt: 0
+          }
+        }
+      : {}),
+    ...(filters.tagId
+      ? {
+          tags: {
+            some: {
+              tagId:
+                filters.tagId
+            }
+          }
+        }
+      : {}),
+    ...(filters.conversationType ===
+      "DIRECT"
+      ? {
+          contact: {
+            isGroup:
+              false
+          }
+        }
+      : filters.conversationType ===
+          "GROUP"
+        ? {
+            contact: {
+              isGroup:
+                true
+            }
+          }
+        : {})
   };
 
   return prisma.ticket.findMany({
     where,
-    include: ticketInclude,
-    orderBy: {
-      lastMessageAt: "desc"
-    },
+    include:
+      ticketInclude,
+    orderBy: [
+      {
+        unreadCount:
+          "desc"
+      },
+      {
+        lastMessageAt:
+          "desc"
+      }
+    ],
     take: 200
   });
 }
@@ -692,6 +842,7 @@ export async function sendTicketText(input: {
   membershipId: string;
   role: WappRole;
   text: string;
+  replyToMessageId?: string;
 }) {
   let ticket = await getTicket(input.companyId, input.ticketId);
 
@@ -728,11 +879,58 @@ export async function sendTicketText(input: {
     );
   }
 
-  const result = await evolutionWhatsAppClient.sendText({
-    instanceName: ticket.whatsappConnection.instanceName,
-    number: ticket.contact.remoteJid,
-    text: input.text
-  });
+  const quotedMessage =
+    input.replyToMessageId
+      ? await prisma.message.findFirst({
+          where: {
+            id:
+              input.replyToMessageId,
+            companyId:
+              input.companyId,
+            ticketId:
+              ticket.id
+          },
+          select: {
+            id: true,
+            externalId:
+              true
+          }
+        })
+      : null;
+
+  if (
+    input.replyToMessageId &&
+    !quotedMessage
+  ) {
+    throw new AppError(
+      "A mensagem citada não pertence a este atendimento.",
+      422,
+      "INVALID_QUOTED_MESSAGE"
+    );
+  }
+
+  const result =
+    await evolutionWhatsAppClient.sendText({
+      instanceName:
+        ticket
+          .whatsappConnection
+          .instanceName,
+      number:
+        ticket
+          .contact
+          .remoteJid,
+      text:
+        input.text,
+      ...(quotedMessage
+        ? {
+            quoted: {
+              externalId:
+                quotedMessage
+                  .externalId
+            }
+          }
+        : {})
+    });
 
   const timestamp = sentTimestamp(result);
   const externalId = sentExternalId(result);
@@ -755,6 +953,9 @@ export async function sendTicketText(input: {
       type: "TEXT",
       deliveryStatus: "PENDING",
       body: input.text,
+      quotedExternalId:
+        quotedMessage
+          ?.externalId,
       timestamp,
       rawPayload: toPrismaJson(result)
     }
@@ -781,6 +982,144 @@ export async function sendTicketText(input: {
   return message;
 }
 
+
+export async function sendTicketReaction(input: {
+  companyId: string;
+  ticketId: string;
+  messageId: string;
+  membershipId: string;
+  role: WappRole;
+  emoji: string;
+}) {
+  let ticket =
+    await getTicket(
+      input.companyId,
+      input.ticketId
+    );
+
+  if (
+    ticket.status ===
+    "CLOSED"
+  ) {
+    throw new AppError(
+      "Este atendimento já foi encerrado.",
+      409,
+      "TICKET_CLOSED"
+    );
+  }
+
+  assertCanOperateTicket(
+    ticket.assignedMembershipId,
+    input.membershipId,
+    input.role
+  );
+
+  if (
+    !ticket.assignedMembershipId
+  ) {
+    await claimTicket({
+      companyId:
+        input.companyId,
+      ticketId:
+        ticket.id,
+      membershipId:
+        input.membershipId,
+      role:
+        input.role
+    });
+
+    ticket =
+      await getTicket(
+        input.companyId,
+        input.ticketId
+      );
+  }
+
+  if (
+    ticket
+      .whatsappConnection
+      .status !==
+    "CONNECTED"
+  ) {
+    throw new AppError(
+      "A conexão WhatsApp deste atendimento está offline.",
+      409,
+      "WHATSAPP_NOT_CONNECTED"
+    );
+  }
+
+  const message =
+    await prisma.message.findFirst({
+      where: {
+        id:
+          input.messageId,
+        companyId:
+          input.companyId,
+        ticketId:
+          ticket.id
+      },
+      select: {
+        id: true,
+        externalId:
+          true,
+        direction:
+          true
+      }
+    });
+
+  if (!message) {
+    throw new AppError(
+      "Mensagem não encontrada neste atendimento.",
+      404,
+      "TICKET_MESSAGE_NOT_FOUND"
+    );
+  }
+
+  const emoji =
+    input.emoji.trim();
+
+  await evolutionWhatsAppClient.sendReaction({
+    instanceName:
+      ticket
+        .whatsappConnection
+        .instanceName,
+    key: {
+      id:
+        message.externalId,
+      remoteJid:
+        ticket
+          .contact
+          .remoteJid,
+      fromMe:
+        message.direction ===
+        "OUTBOUND"
+    },
+    reaction:
+      emoji
+  });
+
+  const reactions =
+    await persistReaction({
+      companyId:
+        input.companyId,
+      ticketId:
+        ticket.id,
+      messageId:
+        message.id,
+      reactorKey:
+        "SELF",
+      fromMe: true,
+      emoji,
+      reactedByMembershipId:
+        input.membershipId
+    });
+
+  return {
+    messageId:
+      message.id,
+    reactions
+  };
+}
 
 const documentMimeTypes = new Set([
   "application/pdf",

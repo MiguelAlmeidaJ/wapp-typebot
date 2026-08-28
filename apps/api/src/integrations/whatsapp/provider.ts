@@ -18,6 +18,19 @@ export interface SendTextInput {
   instanceName: string;
   number: string;
   text: string;
+  quoted?: {
+    externalId: string;
+  };
+}
+
+export interface SendReactionInput {
+  instanceName: string;
+  key: {
+    id: string;
+    remoteJid: string;
+    fromMe: boolean;
+  };
+  reaction: string;
 }
 
 export type WhatsAppMediaType =
@@ -82,6 +95,10 @@ export interface WhatsAppProviderClient {
 
   sendText(
     input: SendTextInput
+  ): Promise<unknown>;
+
+  sendReaction(
+    input: SendReactionInput
   ): Promise<unknown>;
 
   sendMedia(

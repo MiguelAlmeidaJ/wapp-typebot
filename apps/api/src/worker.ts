@@ -1,19 +1,41 @@
 import { prisma } from "./lib/database.js";
 import {
+  createAutomationWorker
+} from "./jobs/automation.worker.js";
+import {
+  closeAutomationQueue
+} from "./jobs/automation.queue.js";
+import {
   closeMediaCaptureQueue
 } from "./jobs/media-capture.queue.js";
 import {
   createMediaCaptureWorker
 } from "./jobs/media-capture.worker.js";
 import {
+  closeMaintenanceQueue,
+  ensureMaintenanceSchedule
+} from "./jobs/maintenance.queue.js";
+import {
+  createMaintenanceWorker
+} from "./jobs/maintenance.worker.js";
+import {
   closeRealtimeTransport
 } from "./modules/realtime/realtime.bus.js";
 
-const worker =
-  createMediaCaptureWorker();
+const workers = [
+  createMediaCaptureWorker(),
+  createMaintenanceWorker(),
+  createAutomationWorker()
+];
+
+await ensureMaintenanceSchedule();
 
 console.info(
-  "[jobs] Wapp media worker started"
+  "[jobs] Wapp workers started",
+  {
+    workers:
+      workers.length
+  }
 );
 
 let shuttingDown =
@@ -33,8 +55,19 @@ async function shutdown(
     `[jobs] shutting down (${signal})`
   );
 
-  await worker.close();
-  await closeMediaCaptureQueue();
+  await Promise.all(
+    workers.map(
+      worker =>
+        worker.close()
+    )
+  );
+
+  await Promise.all([
+    closeMediaCaptureQueue(),
+    closeMaintenanceQueue(),
+    closeAutomationQueue()
+  ]);
+
   await closeRealtimeTransport();
   await prisma.$disconnect();
 
@@ -59,12 +92,17 @@ process.on(
   }
 );
 
-worker.on(
-  "error",
-  error => {
-    console.error(
-      "[jobs] worker error",
-      error
-    );
-  }
-);
+for (
+  const worker
+  of workers
+) {
+  worker.on(
+    "error",
+    error => {
+      console.error(
+        "[jobs] worker error",
+        error
+      );
+    }
+  );
+}

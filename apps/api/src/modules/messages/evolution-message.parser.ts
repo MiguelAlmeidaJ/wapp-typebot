@@ -1,3 +1,5 @@
+import { canonicalRemoteJid } from "./contact-identity.js";
+
 export interface ParsedEvolutionMessage {
   externalId: string;
   remoteJid: string;
@@ -211,11 +213,50 @@ function mediaInfo(
   };
 }
 
-function quotedId(message: Record<string, unknown>) {
-  const extended = record(message.extendedTextMessage);
-  const context = record(extended?.contextInfo);
+function quotedId(
+  message:
+    Record<string, unknown>
+) {
+  const messageContainers = [
+    message.extendedTextMessage,
+    message.imageMessage,
+    message.audioMessage,
+    message.videoMessage,
+    message.documentMessage,
+    message.stickerMessage,
+    message.locationMessage,
+    message.contactMessage
+  ];
 
-  return string(context?.stanzaId);
+  for (
+    const container
+    of messageContainers
+  ) {
+    const context =
+      record(
+        record(
+          container
+        )?.contextInfo
+      );
+
+    const stanzaId =
+      string(
+        context?.stanzaId
+      );
+
+    if (stanzaId) {
+      return stanzaId;
+    }
+  }
+
+  const directContext =
+    record(
+      message.contextInfo
+    );
+
+  return string(
+    directContext?.stanzaId
+  );
 }
 
 export function parseEvolutionMessage(
@@ -228,19 +269,42 @@ export function parseEvolutionMessage(
   }
 
   const key = record(data.key);
-  const remoteJid = string(key?.remoteJid);
-  const externalId = string(key?.id);
+  const sourceRemoteJid =
+    string(
+      key?.remoteJid
+    );
+  const remoteJidAlt =
+    string(
+      key?.remoteJidAlt
+    );
+  const externalId =
+    string(
+      key?.id
+    );
 
-  if (!remoteJid || !externalId) {
+  if (
+    !sourceRemoteJid ||
+    !externalId
+  ) {
     return null;
   }
 
   if (
-    remoteJid === "status@broadcast" ||
-    remoteJid.endsWith("@broadcast")
+    sourceRemoteJid ===
+      "status@broadcast" ||
+    sourceRemoteJid.endsWith(
+      "@broadcast"
+    )
   ) {
     return null;
   }
+
+  const remoteJid =
+    canonicalRemoteJid({
+      remoteJid:
+        sourceRemoteJid,
+      remoteJidAlt
+    });
 
   const message = record(data.message);
 
