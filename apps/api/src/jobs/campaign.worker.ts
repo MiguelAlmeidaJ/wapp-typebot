@@ -21,7 +21,19 @@ export function createCampaignWorker() {
             ? job.data.recipientId
             : null;
         if (!recipientId) throw new Error("recipientId is required.");
-        return deliverCampaignRecipient(recipientId);
+        const result = await deliverCampaignRecipient(recipientId);
+
+        if (
+          "rescheduleAt" in result &&
+          result.rescheduleAt
+        ) {
+          await enqueueCampaignRecipient({
+            recipientId,
+            plannedFor: result.rescheduleAt
+          });
+        }
+
+        return result;
       }
 
       if (job.name === CAMPAIGN_SWEEP_JOB) {
@@ -45,7 +57,7 @@ export function createCampaignWorker() {
     },
     {
       connection: jobWorkerRedisOptions(),
-      concurrency: 2,
+      concurrency: 1,
       limiter: { max: 10, duration: 60_000 }
     }
   );

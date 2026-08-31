@@ -115,3 +115,24 @@ pnpm verify
 ```
 
 and then run `pnpm smoke` against the target environment.
+
+## P3.5.1 CI stabilization
+
+The Quality Gate now provides non-secret placeholder `DATABASE_URL` and
+`SHADOW_DATABASE_URL` values so Prisma configuration can load during
+`prisma generate`. Client generation does not connect to those placeholder
+databases.
+
+The workflow also runs `pnpm test:integration`. That integration suite starts
+disposable MySQL 8.4 and Redis containers, overrides `DATABASE_URL`, applies
+the real migration chain and destroys the disposable containers afterwards.
+
+The P3 integration coverage now crosses:
+
+- Contact 360 custom field persistence;
+- pipeline creation and contact stage movement;
+- CRM follow-up task creation;
+- saved segment resolution;
+- explicit campaign consent and campaign audience preview.
+
+A green local unit suite alone is therefore not the release gate for P3.

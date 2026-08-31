@@ -5,6 +5,7 @@ import {
   canSendCampaign,
   composeCampaignBody,
   isCampaignOptOutKeyword,
+  nextCampaignDispatchAt,
   plannedCampaignSendAt
 } from "./campaign.policy.js";
 
@@ -42,5 +43,29 @@ test("window capacity is enforced", () => {
       ratePerMinute: 10
     }),
     "WINDOW_CAPACITY_EXCEEDED"
+  );
+});
+
+
+test("recovered campaign backlog keeps its configured cadence", () => {
+  const now = new Date("2026-08-31T12:10:00.000Z");
+  const lastActivityAt = new Date("2026-08-31T12:09:30.000Z");
+
+  assert.equal(
+    nextCampaignDispatchAt({
+      now,
+      lastActivityAt,
+      ratePerMinute: 1
+    }).toISOString(),
+    "2026-08-31T12:10:30.000Z"
+  );
+
+  assert.equal(
+    nextCampaignDispatchAt({
+      now,
+      lastActivityAt: null,
+      ratePerMinute: 1
+    }).toISOString(),
+    now.toISOString()
   );
 });

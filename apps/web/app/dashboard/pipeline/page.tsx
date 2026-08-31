@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+
 import {
   type DragEvent,
   type FormEvent,
@@ -173,7 +175,7 @@ function dateLabel(
   );
 }
 
-export default function PipelinePage() {
+function PipelinePageContent() {
   const router =
     useRouter();
 
@@ -1430,5 +1432,19 @@ export default function PipelinePage() {
         </section>
       ) : null}
     </main>
+  );
+}
+
+export default function PipelinePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="dashboard-loading">
+          Carregando…
+        </main>
+      }
+    >
+      <PipelinePageContent />
+    </Suspense>
   );
 }

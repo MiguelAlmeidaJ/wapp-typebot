@@ -101,3 +101,24 @@ P3.5 introduces:
 - `CampaignRecipient`
 - `CampaignEvent`
 - related enums
+
+## P3.5.1 runtime hardening
+
+P3.5.1 adds two runtime invariants.
+
+First, suppressing the final pending recipient by manual or inbound opt-out
+immediately re-evaluates campaign completion. A campaign cannot remain RUNNING
+only because its final pending recipient answered `SAIR`.
+
+Second, overdue BullMQ jobs do not bypass the campaign's configured
+`ratePerMinute`. Before a provider call, the campaign checks its most recent
+SENT/PROCESSING recipient and reschedules the current recipient to the next
+safe slot when needed.
+
+The queue job id includes that planned slot, allowing an overdue job to finish
+and a new delayed job to coexist without being mistaken for the same BullMQ
+job.
+
+The campaign worker uses concurrency 1 in the initial rollout. The database
+remains the source of truth and the global BullMQ limiter remains an additional
+10/minute ceiling.

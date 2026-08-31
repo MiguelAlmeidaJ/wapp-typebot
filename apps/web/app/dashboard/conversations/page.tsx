@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+
 import {
   type FormEvent,
   useCallback,
@@ -607,7 +609,7 @@ const REACTION_OPTIONS = [
   "🙏"
 ] as const;
 
-export default function ConversationsPage() {
+function ConversationsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { session, loading, request, subscribe } = useAuth();
@@ -4925,5 +4927,19 @@ export default function ConversationsPage() {
         </section>
       </section>
     </main>
+  );
+}
+
+export default function ConversationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="dashboard-loading">
+          Carregando conversas…
+        </main>
+      }
+    >
+      <ConversationsPageContent />
+    </Suspense>
   );
 }

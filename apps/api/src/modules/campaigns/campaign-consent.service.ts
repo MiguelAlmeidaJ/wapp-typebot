@@ -2,6 +2,7 @@ import { AppError } from "../../errors/app-error.js";
 import { prisma } from "../../lib/database.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
 import { isCampaignOptOutKeyword } from "./campaign.policy.js";
+import { refreshCampaignCompletion } from "./campaign.service.js";
 
 async function requireDirectContact(companyId: string, contactId: string) {
   const contact = await prisma.contact.findFirst({
@@ -16,6 +17,50 @@ async function requireDirectContact(companyId: string, contactId: string) {
     );
   }
   return contact;
+}
+
+async function suppressPendingCampaignRecipients(input: {
+  companyId: string;
+  contactId: string;
+  reason: string;
+}) {
+  const affected =
+    await prisma.campaignRecipient.findMany({
+      where: {
+        contactId: input.contactId,
+        status: "PENDING",
+        campaign: {
+          companyId: input.companyId,
+          status: "RUNNING"
+        }
+      },
+      select: {
+        campaignId: true
+      }
+    });
+
+  if (affected.length === 0) return;
+
+  await prisma.campaignRecipient.updateMany({
+    where: {
+      contactId: input.contactId,
+      status: "PENDING",
+      campaign: {
+        companyId: input.companyId,
+        status: "RUNNING"
+      }
+    },
+    data: {
+      status: "SUPPRESSED",
+      exclusionReason: input.reason
+    }
+  });
+
+  for (const campaignId of new Set(
+    affected.map(item => item.campaignId)
+  )) {
+    await refreshCampaignCompletion(campaignId);
+  }
 }
 
 export async function getCampaignConsent(companyId: string, contactId: string) {
@@ -58,16 +103,10 @@ export async function setCampaignConsent(input: {
   });
 
   if (input.status === "OPTED_OUT") {
-    await prisma.campaignRecipient.updateMany({
-      where: {
-        contactId: contact.id,
-        status: "PENDING",
-        campaign: { companyId: input.companyId, status: "RUNNING" }
-      },
-      data: {
-        status: "SUPPRESSED",
-        exclusionReason: "OPTED_OUT_AFTER_START"
-      }
+    await suppressPendingCampaignRecipients({
+      companyId: input.companyId,
+      contactId: contact.id,
+      reason: "OPTED_OUT_AFTER_START"
     });
   }
 
@@ -110,13 +149,10 @@ export async function applyInboundCampaignOptOut(input: {
     }
   });
 
-  await prisma.campaignRecipient.updateMany({
-    where: {
-      contactId: contact.id,
-      status: "PENDING",
-      campaign: { companyId: input.companyId, status: "RUNNING" }
-    },
-    data: { status: "SUPPRESSED", exclusionReason: "INBOUND_OPT_OUT" }
+  await suppressPendingCampaignRecipients({
+    companyId: input.companyId,
+    contactId: contact.id,
+    reason: "INBOUND_OPT_OUT"
   });
 
   publishRealtime(input.companyId, {

@@ -14,6 +14,7 @@ import {
   campaignWindowError,
   composeCampaignBody,
   MAX_CAMPAIGN_AUDIENCE,
+  nextCampaignDispatchAt,
   plannedCampaignSendAt
 } from "./campaign.policy.js";
 
@@ -676,7 +677,7 @@ export async function listCampaignRecipients(input: {
   });
 }
 
-async function refreshCampaignCompletion(campaignId: string) {
+export async function refreshCampaignCompletion(campaignId: string) {
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
     select: { id: true, companyId: true, status: true }
@@ -828,6 +829,90 @@ export async function deliverCampaignRecipient(recipientId: string) {
     });
     await refreshCampaignCompletion(recipient.campaignId);
     return { delivered: false, reason: "connection_offline" };
+  }
+
+  const lastActivity =
+    await prisma.campaignRecipient.findFirst({
+      where: {
+        campaignId: recipient.campaignId,
+        id: { not: recipient.id },
+        OR: [
+          {
+            status: "SENT",
+            sentAt: { not: null }
+          },
+          {
+            status: "PROCESSING",
+            claimedAt: { not: null }
+          }
+        ]
+      },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        sentAt: true,
+        claimedAt: true
+      }
+    });
+
+  const lastActivityAt =
+    lastActivity?.sentAt ??
+    lastActivity?.claimedAt ??
+    null;
+
+  const nextAllowedAt = nextCampaignDispatchAt({
+    now,
+    lastActivityAt,
+    ratePerMinute: recipient.campaign.ratePerMinute
+  });
+
+  if (nextAllowedAt.getTime() > now.getTime()) {
+    if (
+      nextAllowedAt.getTime() >
+      recipient.campaign.windowEndAt.getTime()
+    ) {
+      await prisma.campaignRecipient.updateMany({
+        where: {
+          id: recipient.id,
+          status: "PENDING"
+        },
+        data: {
+          status: "FAILED",
+          error:
+            "A janela de envio terminou antes do próximo slot seguro da campanha."
+        }
+      });
+      await refreshCampaignCompletion(recipient.campaignId);
+      return {
+        delivered: false,
+        reason: "rate_window_expired" as const,
+        rescheduleAt: null
+      };
+    }
+
+    const rescheduled =
+      await prisma.campaignRecipient.updateMany({
+        where: {
+          id: recipient.id,
+          status: "PENDING"
+        },
+        data: {
+          plannedFor: nextAllowedAt
+        }
+      });
+
+    if (rescheduled.count !== 1) {
+      return {
+        delivered: false,
+        reason: "already_claimed" as const,
+        rescheduleAt: null
+      };
+    }
+
+    return {
+      delivered: false,
+      reason: "rate_limited" as const,
+      rescheduleAt: nextAllowedAt
+    };
   }
 
   const claimed = await prisma.campaignRecipient.updateMany({

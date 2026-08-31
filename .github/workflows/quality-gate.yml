@@ -22,6 +22,8 @@ jobs:
 
     env:
       NEXT_PUBLIC_API_URL: http://localhost:4000
+    DATABASE_URL: mysql://wapp_ci:wapp_ci@127.0.0.1:3306/wapp_ci
+    SHADOW_DATABASE_URL: mysql://wapp_ci:wapp_ci@127.0.0.1:3306/wapp_ci_shadow
 
     steps:
       - name: Checkout

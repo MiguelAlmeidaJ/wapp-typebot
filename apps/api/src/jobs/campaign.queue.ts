@@ -23,7 +23,7 @@ export async function enqueueCampaignRecipient(input: {
     CAMPAIGN_SEND_JOB,
     { recipientId: input.recipientId },
     {
-      jobId: `campaign-recipient-${input.recipientId}`,
+      jobId: `campaign-recipient-${input.recipientId}-${input.plannedFor.getTime()}`,
       delay: Math.max(0, input.plannedFor.getTime() - Date.now()),
       attempts: 1,
       removeOnComplete: { count: 5000 },

@@ -50,6 +50,24 @@ export function plannedCampaignSendAt(
   );
 }
 
+export function nextCampaignDispatchAt(input: {
+  now: Date;
+  lastActivityAt: Date | null;
+  ratePerMinute: number;
+}) {
+  if (!input.lastActivityAt) return input.now;
+
+  const safeRate = Math.max(1, Math.min(10, input.ratePerMinute));
+  const cadenceMs = Math.ceil(60_000 / safeRate);
+
+  return new Date(
+    Math.max(
+      input.now.getTime(),
+      input.lastActivityAt.getTime() + cadenceMs
+    )
+  );
+}
+
 export function campaignWindowError(input: {
   now: Date;
   startAt: Date;

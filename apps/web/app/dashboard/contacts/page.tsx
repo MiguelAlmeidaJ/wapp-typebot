@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+
 import {
   type FormEvent,
   useCallback,
@@ -124,7 +126,7 @@ function initials(name: string) {
     .join("");
 }
 
-export default function ContactsPage() {
+function ContactsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const targetContactId =
@@ -761,5 +763,19 @@ export default function ContactsPage() {
         </section>
       </section>
     </main>
+  );
+}
+
+export default function ContactsPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="dashboard-loading">
+          Carregando…
+        </main>
+      }
+    >
+      <ContactsPageContent />
+    </Suspense>
   );
 }
