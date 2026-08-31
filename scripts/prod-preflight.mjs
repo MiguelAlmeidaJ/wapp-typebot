@@ -1,4 +1,7 @@
 import {
+  stat
+} from "node:fs/promises";
+import {
   readFile
 } from "node:fs/promises";
 import {
@@ -8,15 +11,29 @@ import {
 const envPath =
   resolve(
     process.cwd(),
-    process.env
-      .WAPP_PROD_ENV ??
+    process.env.WAPP_PROD_ENV ??
       "infra/production/.env.production"
   );
+
+const placeholderPattern =
+  /CHANGE_ME|REPLACE_ME|YOUR_[A-Z0-9_]+|example\.com/i;
+
+function fail(
+  message
+) {
+  throw new Error(
+    message
+  );
+}
 
 function parseEnv(
   source
 ) {
-  const values = {};
+  const values =
+    {};
+
+  const duplicates =
+    new Set();
 
   for (
     const rawLine
@@ -56,7 +73,8 @@ function parseEnv(
 
     let value =
       line.slice(
-        separator + 1
+        separator +
+          1
       ).trim();
 
     if (
@@ -84,19 +102,35 @@ function parseEnv(
         );
     }
 
-    values[key] =
+    if (
+      Object.hasOwn(
+        values,
+        key
+      )
+    ) {
+      duplicates.add(
+        key
+      );
+    }
+
+    values[
+      key
+    ] =
       value;
   }
 
-  return values;
-}
+  if (
+    duplicates.size >
+    0
+  ) {
+    fail(
+      `Duplicate environment keys: ${[
+        ...duplicates
+      ].join(", ")}`
+    );
+  }
 
-function fail(
-  message
-) {
-  throw new Error(
-    message
-  );
+  return values;
 }
 
 function required(
@@ -104,11 +138,13 @@ function required(
   key
 ) {
   const value =
-    env[key];
+    env[
+      key
+    ];
 
   if (
     !value ||
-    /CHANGE_ME/i.test(
+    placeholderPattern.test(
       value
     )
   ) {
@@ -118,6 +154,198 @@ function required(
   }
 
   return value;
+}
+
+function strongSecret(
+  env,
+  key,
+  minimum
+) {
+  const value =
+    required(
+      env,
+      key
+    );
+
+  if (
+    value.length <
+    minimum
+  ) {
+    fail(
+      `${key} must contain at least ${minimum} characters.`
+    );
+  }
+
+  return value;
+}
+
+function integerInRange(
+  env,
+  key,
+  minimum,
+  maximum
+) {
+  const raw =
+    required(
+      env,
+      key
+    );
+
+  if (
+    !/^\d+$/.test(
+      raw
+    )
+  ) {
+    fail(
+      `${key} must be an integer.`
+    );
+  }
+
+  const value =
+    Number(
+      raw
+    );
+
+  if (
+    !Number.isSafeInteger(
+      value
+    ) ||
+    value <
+      minimum ||
+    value >
+      maximum
+  ) {
+    fail(
+      `${key} must be between ${minimum} and ${maximum}.`
+    );
+  }
+
+  return value;
+}
+
+function booleanValue(
+  env,
+  key
+) {
+  const value =
+    required(
+      env,
+      key
+    );
+
+  if (
+    ![
+      "true",
+      "false"
+    ].includes(
+      value
+    )
+  ) {
+    fail(
+      `${key} must be true or false.`
+    );
+  }
+
+  return value ===
+    "true";
+}
+
+function webUrl(
+  env,
+  key,
+  {
+    allowHttp =
+      true,
+    allowEmpty =
+      false
+  } = {}
+) {
+  const raw =
+    env[
+      key
+    ] ??
+    "";
+
+  if (
+    allowEmpty &&
+    !raw
+  ) {
+    return null;
+  }
+
+  const value =
+    required(
+      env,
+      key
+    );
+
+  let url;
+
+  try {
+    url =
+      new URL(
+        value
+      );
+  } catch {
+    fail(
+      `${key} must be a valid URL.`
+    );
+  }
+
+  const protocols =
+    allowHttp
+      ? [
+          "http:",
+          "https:"
+        ]
+      : [
+          "https:"
+        ];
+
+  if (
+    !protocols.includes(
+      url.protocol
+    )
+  ) {
+    fail(
+      `${key} must use ${allowHttp ? "http or https" : "https"}.`
+    );
+  }
+
+  if (
+    /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(
+      url.hostname
+    )
+  ) {
+    fail(
+      `${key} must not point to localhost in production.`
+    );
+  }
+
+  return url;
+}
+
+function sameBundledMysqlCredentials(
+  url,
+  {
+    user,
+    password
+  }
+) {
+  return (
+    url.protocol ===
+      "mysql:" &&
+    url.hostname ===
+      "mysql" &&
+    decodeURIComponent(
+      url.username
+    ) ===
+      user &&
+    decodeURIComponent(
+      url.password
+    ) ===
+      password
+  );
 }
 
 try {
@@ -132,6 +360,28 @@ try {
       source
     );
 
+  if (
+    process.platform !==
+    "win32"
+  ) {
+    const info =
+      await stat(
+        envPath
+      );
+
+    if (
+      (
+        info.mode &
+        0o077
+      ) !==
+      0
+    ) {
+      console.warn(
+        "[prod:preflight] WARN: production env is readable by group/other users. Prefer chmod 600."
+      );
+    }
+  }
+
   const domain =
     required(
       env,
@@ -145,12 +395,37 @@ try {
     domain.includes(
       "/"
     ) ||
+    /\s/.test(
+      domain
+    ) ||
     /localhost|127\.0\.0\.1/i.test(
+      domain
+    ) ||
+    !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(
       domain
     )
   ) {
     fail(
       "WAPP_DOMAIN must be a real hostname without protocol or path."
+    );
+  }
+
+  const imageTag =
+    required(
+      env,
+      "WAPP_IMAGE_TAG"
+    );
+
+  if (
+    !/^[A-Za-z0-9._-]+$/.test(
+      imageTag
+    ) ||
+    /^(latest|local)$/i.test(
+      imageTag
+    )
+  ) {
+    fail(
+      "WAPP_IMAGE_TAG must be an immutable release tag, not local/latest."
     );
   }
 
@@ -167,14 +442,16 @@ try {
     );
 
   const mysqlPassword =
-    required(
+    strongSecret(
       env,
-      "MYSQL_PASSWORD"
+      "MYSQL_PASSWORD",
+      16
     );
 
-  required(
+  strongSecret(
     env,
-    "MYSQL_ROOT_PASSWORD"
+    "MYSQL_ROOT_PASSWORD",
+    16
   );
 
   const databaseUrl =
@@ -186,18 +463,15 @@ try {
     );
 
   if (
-    databaseUrl.protocol !==
-      "mysql:" ||
-    databaseUrl.hostname !==
-      "mysql" ||
-    decodeURIComponent(
-      databaseUrl.username
-    ) !==
-      mysqlUser ||
-    decodeURIComponent(
-      databaseUrl.password
-    ) !==
-      mysqlPassword ||
+    !sameBundledMysqlCredentials(
+      databaseUrl,
+      {
+        user:
+          mysqlUser,
+        password:
+          mysqlPassword
+      }
+    ) ||
     databaseUrl.pathname
       .replace(
         /^\/+/,
@@ -206,14 +480,56 @@ try {
       mysqlDatabase
   ) {
     fail(
-      "DATABASE_URL must match the bundled mysql service credentials."
+      "DATABASE_URL must match the bundled mysql service credentials/database."
+    );
+  }
+
+  const shadowUrl =
+    new URL(
+      required(
+        env,
+        "SHADOW_DATABASE_URL"
+      )
+    );
+
+  if (
+    !sameBundledMysqlCredentials(
+      shadowUrl,
+      {
+        user:
+          mysqlUser,
+        password:
+          mysqlPassword
+      }
+    )
+  ) {
+    fail(
+      "SHADOW_DATABASE_URL must use the bundled mysql service credentials."
+    );
+  }
+
+  const shadowDatabase =
+    shadowUrl.pathname
+      .replace(
+        /^\/+/,
+        ""
+      );
+
+  if (
+    !shadowDatabase ||
+    shadowDatabase ===
+      mysqlDatabase
+  ) {
+    fail(
+      "SHADOW_DATABASE_URL must name a database different from MYSQL_DATABASE."
     );
   }
 
   const redisPassword =
-    required(
+    strongSecret(
       env,
-      "REDIS_PASSWORD"
+      "REDIS_PASSWORD",
+      16
     );
 
   const redisUrl =
@@ -243,56 +559,68 @@ try {
     );
   }
 
-  const jwtSecret =
-    required(
-      env,
-      "JWT_SECRET"
-    );
-
-  if (
-    jwtSecret.length <
+  strongSecret(
+    env,
+    "JWT_SECRET",
     32
-  ) {
-    fail(
-      "JWT_SECRET must contain at least 32 characters."
-    );
-  }
+  );
 
-  const evolutionKey =
-    required(
-      env,
-      "EVOLUTION_API_KEY"
-    );
-
-  if (
-    evolutionKey.length <
+  strongSecret(
+    env,
+    "METRICS_TOKEN",
     32
-  ) {
-    fail(
-      "EVOLUTION_API_KEY must contain at least 32 characters."
-    );
-  }
+  );
 
-  const webhookSecret =
-    required(
-      env,
-      "EVOLUTION_WEBHOOK_SECRET"
-    );
+  integerInRange(
+    env,
+    "API_BODY_MAX_BYTES",
+    65_536,
+    52_428_800
+  );
 
-  if (
-    webhookSecret.length <
+  integerInRange(
+    env,
+    "ACCESS_TOKEN_TTL_SECONDS",
+    60,
+    86_400
+  );
+
+  integerInRange(
+    env,
+    "REFRESH_TOKEN_TTL_DAYS",
+    1,
+    365
+  );
+
+  webUrl(
+    env,
+    "EVOLUTION_BASE_URL"
+  );
+
+  strongSecret(
+    env,
+    "EVOLUTION_API_KEY",
     32
-  ) {
-    fail(
-      "EVOLUTION_WEBHOOK_SECRET must contain at least 32 characters."
-    );
-  }
+  );
 
-  new URL(
-    required(
-      env,
-      "EVOLUTION_BASE_URL"
-    )
+  strongSecret(
+    env,
+    "EVOLUTION_WEBHOOK_SECRET",
+    32
+  );
+
+  integerInRange(
+    env,
+    "EVOLUTION_HEALTHCHECK_INTERVAL_SECONDS",
+    15,
+    3_600
+  );
+
+  integerInRange(
+    env,
+    "MEDIA_MAX_BYTES",
+    1_024,
+    104_857_600
   );
 
   required(
@@ -300,41 +628,95 @@ try {
     "S3_BUCKET"
   );
 
-  const s3Access =
-    required(
-      env,
-      "S3_ACCESS_KEY_ID"
-    );
+  required(
+    env,
+    "S3_REGION"
+  );
 
-  const s3Secret =
-    required(
-      env,
-      "S3_SECRET_ACCESS_KEY"
-    );
+  required(
+    env,
+    "S3_ACCESS_KEY_ID"
+  );
 
-  if (
-    !s3Access ||
-    !s3Secret
-  ) {
-    fail(
-      "S3 credentials must be configured for this baseline."
-    );
-  }
+  strongSecret(
+    env,
+    "S3_SECRET_ACCESS_KEY",
+    16
+  );
 
-  if (
-    env.S3_ENDPOINT
-  ) {
-    new URL(
-      env.S3_ENDPOINT
-    );
-  }
+  webUrl(
+    env,
+    "S3_ENDPOINT",
+    {
+      allowHttp:
+        true,
+      allowEmpty:
+        true
+    }
+  );
+
+  booleanValue(
+    env,
+    "S3_FORCE_PATH_STYLE"
+  );
+
+  integerInRange(
+    env,
+    "JOBS_MEDIA_CAPTURE_CONCURRENCY",
+    1,
+    32
+  );
+
+  integerInRange(
+    env,
+    "JOBS_MEDIA_CAPTURE_ATTEMPTS",
+    1,
+    20
+  );
+
+  booleanValue(
+    env,
+    "MAINTENANCE_ENABLED"
+  );
+
+  integerInRange(
+    env,
+    "MAINTENANCE_INTERVAL_HOURS",
+    1,
+    168
+  );
+
+  integerInRange(
+    env,
+    "SESSION_RETENTION_DAYS",
+    7,
+    365
+  );
+
+  integerInRange(
+    env,
+    "MAINTENANCE_STALE_MEDIA_MINUTES",
+    5,
+    1_440
+  );
+
+  webUrl(
+    env,
+    "TYPEBOT_URL",
+    {
+      allowHttp:
+        true,
+      allowEmpty:
+        true
+    }
+  );
 
   console.log(
     `[prod:preflight] PASS — https://${domain}`
   );
 
   console.log(
-    "[prod:preflight] MySQL, Redis, auth, Evolution and S3 configuration look consistent."
+    "[prod:preflight] Compose credentials, Prisma URLs, auth, metrics, Evolution, S3, jobs and maintenance configuration look consistent."
   );
 } catch (error) {
   console.error(
@@ -348,5 +730,6 @@ try {
     "[prod:preflight] No containers were changed."
   );
 
-  process.exitCode = 1;
+  process.exitCode =
+    1;
 }

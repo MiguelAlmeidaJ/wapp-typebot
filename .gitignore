@@ -75,6 +75,7 @@ cookies.txt
 
 # --- WAPP P1.24 / PRODUCTION SECRETS ---
 infra/production/.env.production
+!infra/production/.env.production.example
 # --- /WAPP P1.24 ---
 
 *.patch

@@ -7,6 +7,7 @@ x-api-environment: &api-environment
   WEB_URL: https://${WAPP_DOMAIN}
   TRUST_PROXY: "true"
   DATABASE_URL: ${DATABASE_URL}
+  SHADOW_DATABASE_URL: ${SHADOW_DATABASE_URL}
   REDIS_URL: ${REDIS_URL}
   API_BODY_MAX_BYTES: ${API_BODY_MAX_BYTES:-1048576}
   JWT_SECRET: ${JWT_SECRET}
@@ -67,6 +68,8 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     command:
       [
         "redis-server",
@@ -85,8 +88,6 @@ services:
           "CMD-SHELL",
           "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"
         ]
-      environment:
-        REDIS_PASSWORD: ${REDIS_PASSWORD}
       interval: 10s
       timeout: 5s
       retries: 20
@@ -95,7 +96,7 @@ services:
       - no-new-privileges:true
 
   migrate:
-    image: wapp-api:${WAPP_IMAGE_TAG:-local}
+    image: wapp-api-migrate:${WAPP_IMAGE_TAG}
     build:
       context: ../..
       dockerfile: infra/production/api.Dockerfile
@@ -111,7 +112,7 @@ services:
       - no-new-privileges:true
 
   api:
-    image: wapp-api:${WAPP_IMAGE_TAG:-local}
+    image: wapp-api-runtime:${WAPP_IMAGE_TAG}
     build:
       context: ../..
       dockerfile: infra/production/api.Dockerfile
@@ -144,7 +145,7 @@ services:
       - no-new-privileges:true
 
   worker:
-    image: wapp-api:${WAPP_IMAGE_TAG:-local}
+    image: wapp-api-runtime:${WAPP_IMAGE_TAG}
     build:
       context: ../..
       dockerfile: infra/production/api.Dockerfile

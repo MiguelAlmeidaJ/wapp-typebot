@@ -26,8 +26,13 @@ COPY tsconfig.base.json ./
 COPY apps/api apps/api
 COPY packages/contracts packages/contracts
 
+# Prisma 7 loads prisma.config.ts during client generation. These URLs are
+# build-only placeholders; prisma generate does not connect to the database.
+ARG PRISMA_BUILD_DATABASE_URL=mysql://build:build@127.0.0.1:3306/build
+ARG PRISMA_BUILD_SHADOW_DATABASE_URL=mysql://build:build@127.0.0.1:3306/build_shadow
+
 RUN pnpm --filter @wapp/contracts build \
-  && pnpm --filter @wapp/api db:generate \
+  && DATABASE_URL="$PRISMA_BUILD_DATABASE_URL" SHADOW_DATABASE_URL="$PRISMA_BUILD_SHADOW_DATABASE_URL" pnpm --filter @wapp/api db:generate \
   && pnpm --filter @wapp/api build
 
 FROM base AS production-deps

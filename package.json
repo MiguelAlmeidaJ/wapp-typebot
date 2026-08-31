@@ -39,9 +39,9 @@
     "smoke": "node scripts/smoke-api.mjs",
     "security:scan": "node scripts/security-scan.mjs",
     "security:revoke-sessions": "pnpm --filter @wapp/api security:revoke-sessions",
-    "prod:init": "node -e \"const fs=require('node:fs');const s='infra/production/.env.production.example';const d='infra/production/.env.production';if(fs.existsSync(d)){console.error('Production env already exists:',d);process.exit(1)}fs.copyFileSync(s,d);console.log('Created',d)\"",
+    "prod:init": "node scripts/prod-init.mjs",
     "prod:preflight": "node scripts/prod-preflight.mjs",
-    "prod:config": "docker compose --env-file infra/production/.env.production -f infra/production/docker-compose.yml config",
+    "prod:config": "bash scripts/prod-config.sh",
     "prod:build": "docker compose --env-file infra/production/.env.production -f infra/production/docker-compose.yml build",
     "prod:deploy": "bash scripts/prod-deploy.sh",
     "prod:ps": "docker compose --env-file infra/production/.env.production -f infra/production/docker-compose.yml ps",
@@ -53,7 +53,8 @@
     "staging:rehearsal": "bash scripts/staging-rehearsal.sh",
     "staging:config": "docker compose -f infra/staging/docker-compose.yml config",
     "contacts:repair-identities": "pnpm --filter @wapp/api contacts:repair-identities",
-    "contacts:repair-identities:apply": "pnpm --filter @wapp/api contacts:repair-identities:apply"
+    "contacts:repair-identities:apply": "pnpm --filter @wapp/api contacts:repair-identities:apply",
+    "prod:template": "node scripts/prod-env-template-check.mjs"
   },
   "engines": {
     "node": ">=24 <25",
