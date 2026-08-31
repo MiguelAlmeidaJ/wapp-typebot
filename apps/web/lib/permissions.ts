@@ -12,7 +12,12 @@ export type UiPermission =
   | "pipeline.view"
   | "pipeline.manage"
   | "tasks.view"
-  | "tasks.admin";
+  | "tasks.admin"
+  | "segments.view"
+  | "segments.manage"
+  | "campaigns.view"
+  | "campaigns.manage"
+  | "campaigns.send";
 
 const permissionsByRole: Record<
   Role,
@@ -30,7 +35,12 @@ const permissionsByRole: Record<
     "pipeline.view",
     "pipeline.manage",
     "tasks.view",
-    "tasks.admin"
+    "tasks.admin",
+    "segments.view",
+    "segments.manage",
+    "campaigns.view",
+    "campaigns.manage",
+    "campaigns.send"
   ],
   ADMIN: [
     "reports.view",
@@ -44,7 +54,12 @@ const permissionsByRole: Record<
     "pipeline.view",
     "pipeline.manage",
     "tasks.view",
-    "tasks.admin"
+    "tasks.admin",
+    "segments.view",
+    "segments.manage",
+    "campaigns.view",
+    "campaigns.manage",
+    "campaigns.send"
   ],
   SUPERVISOR: [
     "reports.view",
@@ -54,14 +69,20 @@ const permissionsByRole: Record<
     "pipeline.view",
     "pipeline.manage",
     "tasks.view",
-    "tasks.admin"
+    "tasks.admin",
+    "segments.view",
+    "segments.manage",
+    "campaigns.view",
+    "campaigns.manage"
   ],
   AGENT: [
     "dashboard.view",
     "conversations.view",
     "contacts.view",
     "pipeline.view",
-    "tasks.view"
+    "tasks.view",
+    "segments.view",
+    "campaigns.view"
   ]
 };
 

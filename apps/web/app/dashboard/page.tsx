@@ -61,6 +61,16 @@ const navigation: Array<{
     permission: "tasks.view"
   },
   {
+    label: "Segmentos",
+    href: "/dashboard/segments",
+    permission: "segments.view"
+  },
+  {
+    label: "Campanhas",
+    href: "/dashboard/campaigns",
+    permission: "campaigns.view"
+  },
+  {
     label: "Relatórios",
     href: "/dashboard/reports",
     permission: "reports.view"

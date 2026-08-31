@@ -28,7 +28,12 @@ export type WappPermission =
   | "pipelines.manage"
   | "tasks.read"
   | "tasks.manage"
-  | "tasks.admin";
+  | "tasks.admin"
+  | "segments.read"
+  | "segments.manage"
+  | "campaigns.read"
+  | "campaigns.manage"
+  | "campaigns.send";
 
 const permissionsByRole: Record<
   WappRole,
@@ -62,7 +67,12 @@ const permissionsByRole: Record<
     "pipelines.manage",
     "tasks.read",
     "tasks.manage",
-    "tasks.admin"
+    "tasks.admin",
+    "segments.read",
+    "segments.manage",
+    "campaigns.read",
+    "campaigns.manage",
+    "campaigns.send"
   ],
   ADMIN: [
     "contactFields.manage",
@@ -92,7 +102,12 @@ const permissionsByRole: Record<
     "pipelines.manage",
     "tasks.read",
     "tasks.manage",
-    "tasks.admin"
+    "tasks.admin",
+    "segments.read",
+    "segments.manage",
+    "campaigns.read",
+    "campaigns.manage",
+    "campaigns.send"
   ],
   SUPERVISOR: [
     "contactFields.manage",
@@ -117,7 +132,11 @@ const permissionsByRole: Record<
     "pipelines.manage",
     "tasks.read",
     "tasks.manage",
-    "tasks.admin"
+    "tasks.admin",
+    "segments.read",
+    "segments.manage",
+    "campaigns.read",
+    "campaigns.manage"
   ],
   AGENT: [
     "automations.read",
@@ -132,7 +151,9 @@ const permissionsByRole: Record<
     "pipelines.read",
     "pipelines.move",
     "tasks.read",
-    "tasks.manage"
+    "tasks.manage",
+    "segments.read",
+    "campaigns.read"
   ]
 };
 

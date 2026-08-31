@@ -3,6 +3,11 @@ import type {
 } from "bullmq";
 
 import { env } from "../config/env.js";
+import { createCampaignWorker } from "./campaign.worker.js";
+import {
+  closeCampaignQueue,
+  ensureCampaignSweep
+} from "./campaign.queue.js";
 import {
   createTaskReminderWorker
 } from "./task-reminder.worker.js";
@@ -55,7 +60,8 @@ export function startEmbeddedJobWorker() {
     createMaintenanceWorker(),
     createAutomationWorker(),
     createScheduledMessageWorker(),
-    createTaskReminderWorker()
+    createTaskReminderWorker(),
+    createCampaignWorker()
   ];
 
   void ensureMaintenanceSchedule()
@@ -78,6 +84,14 @@ export function startEmbeddedJobWorker() {
     .catch(error => {
       console.error(
         "[task-reminders] scheduler setup failed",
+        error
+      );
+    });
+
+  void ensureCampaignSweep()
+    .catch(error => {
+      console.error(
+        "[campaigns] scheduler setup failed",
         error
       );
     });
@@ -140,6 +154,7 @@ export async function closeJobRuntime() {
     closeMaintenanceQueue(),
     closeAutomationQueue(),
     closeScheduledMessageQueue(),
-    closeTaskReminderQueue()
+    closeTaskReminderQueue(),
+    closeCampaignQueue()
   ]);
 }

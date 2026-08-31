@@ -38,7 +38,12 @@ const allPermissions:
     "pipelines.manage",
     "tasks.read",
     "tasks.manage",
-    "tasks.admin"
+    "tasks.admin",
+    "segments.read",
+    "segments.manage",
+    "campaigns.read",
+    "campaigns.manage",
+    "campaigns.send"
   ];
 
 describe(
@@ -382,6 +387,51 @@ describe(
         assert.equal(roleHasPermission("AGENT", "tasks.read"), true);
         assert.equal(roleHasPermission("AGENT", "tasks.manage"), true);
         assert.equal(roleHasPermission("AGENT", "tasks.admin"), false);
+      }
+    );
+  }
+);
+
+
+describe(
+  "contact segment permissions",
+  () => {
+    it(
+      "saved segments are readable operationally and managed by leaders",
+      () => {
+        for (const role of ["OWNER", "ADMIN", "SUPERVISOR"] as const) {
+          assert.equal(roleHasPermission(role, "segments.read"), true);
+          assert.equal(roleHasPermission(role, "segments.manage"), true);
+        }
+        assert.equal(roleHasPermission("AGENT", "segments.read"), true);
+        assert.equal(roleHasPermission("AGENT", "segments.manage"), false);
+      }
+    );
+  }
+);
+
+
+describe(
+  "controlled campaign permissions",
+  () => {
+    it(
+      "campaign launch is owner/admin only",
+      () => {
+        for (
+          const role
+          of ["OWNER", "ADMIN"] as const
+        ) {
+          assert.equal(roleHasPermission(role, "campaigns.read"), true);
+          assert.equal(roleHasPermission(role, "campaigns.manage"), true);
+          assert.equal(roleHasPermission(role, "campaigns.send"), true);
+        }
+
+        assert.equal(roleHasPermission("SUPERVISOR", "campaigns.read"), true);
+        assert.equal(roleHasPermission("SUPERVISOR", "campaigns.manage"), true);
+        assert.equal(roleHasPermission("SUPERVISOR", "campaigns.send"), false);
+        assert.equal(roleHasPermission("AGENT", "campaigns.read"), true);
+        assert.equal(roleHasPermission("AGENT", "campaigns.manage"), false);
+        assert.equal(roleHasPermission("AGENT", "campaigns.send"), false);
       }
     );
   }

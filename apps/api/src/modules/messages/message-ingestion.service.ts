@@ -5,6 +5,7 @@ import {
   scheduleAutomationEvaluation
 } from "../../jobs/automation.dispatch.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
+import { applyInboundCampaignOptOut } from "../campaigns/campaign-consent.service.js";
 import {
   notifyInboundTicketActivity
 } from "../notifications/notification.service.js";
@@ -323,6 +324,12 @@ export async function ingestEvolutionMessage(
   }
 
   if (!parsed.fromMe) {
+    await applyInboundCampaignOptOut({
+      companyId: connection.companyId,
+      contactId: contact.id,
+      body: parsed.body
+    });
+
     await notifyInboundTicketActivity({
       companyId:
         connection.companyId,

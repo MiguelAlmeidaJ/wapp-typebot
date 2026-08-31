@@ -12,6 +12,7 @@ import { useAuth } from "@/components/auth-provider";
 import { ContactCrmPanel } from "@/components/contacts/contact-crm-panel";
 import { ContactPipelineSummary } from "@/components/contacts/contact-pipeline-summary";
 import { ContactTasksPanel } from "@/components/contacts/contact-tasks-panel";
+import { ContactCampaignConsent } from "@/components/contacts/contact-campaign-consent";
 import { ApiError } from "@/lib/api";
 
 type ContactFilter =
@@ -675,6 +676,12 @@ export default function ContactsPage() {
                   </button>
                 </div>
               </form>
+
+              <ContactCampaignConsent
+                contactId={
+                  detail.id
+                }
+              />
 
               <ContactTasksPanel
                 contactId={

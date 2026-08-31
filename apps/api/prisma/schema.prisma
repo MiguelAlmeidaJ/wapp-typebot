@@ -142,6 +142,42 @@ enum CrmTaskEventType {
   REMINDER_FAILED
 }
 
+enum CampaignStatus {
+  DRAFT
+  RUNNING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum CampaignRecipientStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  SUPPRESSED
+  CANCELLED
+}
+
+enum CampaignEventType {
+  CREATED
+  UPDATED
+  STARTED
+  CANCELLED
+  COMPLETED
+  FAILED
+}
+
+enum CampaignConsentStatus {
+  OPTED_IN
+  OPTED_OUT
+}
+
+enum CampaignConsentSource {
+  MANUAL
+  INBOUND_KEYWORD
+}
+
 enum MembershipRole {
   OWNER
   ADMIN
@@ -179,6 +215,10 @@ model Company {
   contactStageTransitions  ContactStageTransition[]
   crmTasks                 CrmTask[]
   crmTaskEvents            CrmTaskEvent[]
+  contactSegments          ContactSegment[]
+  campaigns                Campaign[]
+  campaignEvents           CampaignEvent[]
+  campaignConsents         ContactCampaignConsent[]
 }
 
 model User {
@@ -226,6 +266,10 @@ model CompanyMembership {
   assignedCrmTasks         CrmTask[] @relation("CrmTaskAssignee")
   createdCrmTasks          CrmTask[] @relation("CrmTaskCreator")
   crmTaskEvents            CrmTaskEvent[] @relation("CrmTaskEventActor")
+  createdContactSegments   ContactSegment[]
+  createdCampaigns         Campaign[]
+  campaignEvents           CampaignEvent[]
+  campaignConsentUpdates   ContactCampaignConsent[]
 }
 
 model Session {
@@ -278,6 +322,7 @@ model WhatsAppConnection {
   @@index([companyId, healthStatus])
   @@index([companyId, createdAt])
   @@index([companyId, defaultQueueId])
+  campaigns                Campaign[]
 }
 
 model Contact {
@@ -305,6 +350,8 @@ model Contact {
   stageTransitions         ContactStageTransition[]
   crmTasks                 CrmTask[]
   notifications            Notification[]
+  campaignConsent          ContactCampaignConsent?
+  campaignRecipients       CampaignRecipient[]
 }
 
 model Ticket {
@@ -825,4 +872,122 @@ model CrmTaskEvent {
 
   @@index([companyId, createdAt])
   @@index([taskId, createdAt])
+}
+
+
+model ContactSegment {
+  id                    String             @id @default(uuid()) @db.Char(36)
+  companyId             String             @db.Char(36)
+  createdByMembershipId String?            @db.Char(36)
+  name                  String             @db.VarChar(140)
+  description           String?            @db.VarChar(500)
+  definition            Json
+  isActive              Boolean            @default(true)
+  company               Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdByMembership   CompanyMembership? @relation(fields: [createdByMembershipId], references: [id], onDelete: SetNull)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, isActive, updatedAt])
+  @@index([createdByMembershipId, updatedAt])
+  campaigns                Campaign[]
+}
+
+
+model ContactCampaignConsent {
+  id                    String                @id @default(uuid()) @db.Char(36)
+  companyId             String                @db.Char(36)
+  contactId             String                @unique @db.Char(36)
+  updatedByMembershipId String?               @db.Char(36)
+  status                CampaignConsentStatus
+  source                CampaignConsentSource @default(MANUAL)
+  note                  String?               @db.VarChar(500)
+  company               Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact               Contact               @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  updatedByMembership   CompanyMembership?    @relation(fields: [updatedByMembershipId], references: [id], onDelete: SetNull)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([companyId, status, updatedAt])
+  @@index([updatedByMembershipId, updatedAt])
+}
+
+model Campaign {
+  id                    String             @id @default(uuid()) @db.Char(36)
+  companyId             String             @db.Char(36)
+  segmentId             String             @db.Char(36)
+  whatsappConnectionId  String             @db.Char(36)
+  createdByMembershipId String             @db.Char(36)
+  name                  String             @db.VarChar(160)
+  body                  String             @db.Text
+  status                CampaignStatus     @default(DRAFT)
+  ratePerMinute         Int                @default(6)
+  windowStartAt         DateTime
+  windowEndAt           DateTime
+  audienceSnapshotAt    DateTime?
+  segmentDefinition     Json?
+  segmentContacts       Int                @default(0)
+  eligibleRecipients    Int                @default(0)
+  optedOutRecipients    Int                @default(0)
+  unknownConsent        Int                @default(0)
+  startedAt             DateTime?
+  completedAt           DateTime?
+  cancelledAt           DateTime?
+  error                 String?            @db.VarChar(1000)
+  company               Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  segment               ContactSegment     @relation(fields: [segmentId], references: [id], onDelete: Restrict)
+  whatsappConnection    WhatsAppConnection @relation(fields: [whatsappConnectionId], references: [id], onDelete: Restrict)
+  createdByMembership   CompanyMembership  @relation(fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  recipients            CampaignRecipient[]
+  events                CampaignEvent[]
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@index([companyId, status, updatedAt])
+  @@index([segmentId, createdAt])
+  @@index([whatsappConnectionId, status])
+  @@index([createdByMembershipId, createdAt])
+}
+
+model CampaignRecipient {
+  id                String                  @id @default(uuid()) @db.Char(36)
+  campaignId        String                  @db.Char(36)
+  contactId         String                  @db.Char(36)
+  status            CampaignRecipientStatus @default(PENDING)
+  snapshotName      String                  @db.VarChar(190)
+  snapshotRemoteJid String                  @db.VarChar(190)
+  exclusionReason   String?                 @db.VarChar(80)
+  plannedFor        DateTime?
+  claimedAt         DateTime?
+  sentAt            DateTime?
+  externalId        String?                 @db.VarChar(190)
+  ticketId          String?                 @db.Char(36)
+  messageId         String?                 @db.Char(36)
+  error             String?                 @db.VarChar(1000)
+  campaign          Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact           Contact                 @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId, status, plannedFor])
+  @@index([contactId, createdAt])
+  @@index([status, plannedFor])
+}
+
+model CampaignEvent {
+  id                String             @id @default(uuid()) @db.Char(36)
+  companyId         String             @db.Char(36)
+  campaignId        String             @db.Char(36)
+  actorMembershipId String?            @db.Char(36)
+  type              CampaignEventType
+  metadata          Json?
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  campaign          Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  actorMembership   CompanyMembership? @relation(fields: [actorMembershipId], references: [id], onDelete: SetNull)
+  createdAt         DateTime           @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([campaignId, createdAt])
 }

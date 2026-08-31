@@ -15,7 +15,10 @@ export type RealtimeEventType =
   | "connection.updated"
   | "presence.updated"
   | "contact.pipeline.updated"
-  | "task.updated";
+  | "task.updated"
+  | "segment.updated"
+  | "campaign.updated"
+  | "campaign.consent.updated";
 
 export interface RealtimeEvent {
   id: string;
@@ -35,4 +38,6 @@ export interface RealtimeEvent {
   contactId?: string;
   pipelineId?: string;
   taskId?: string;
+  segmentId?: string;
+  campaignId?: string;
 }
