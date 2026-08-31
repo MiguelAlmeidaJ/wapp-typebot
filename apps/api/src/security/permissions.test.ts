@@ -43,7 +43,9 @@ const allPermissions:
     "segments.manage",
     "campaigns.read",
     "campaigns.manage",
-    "campaigns.send"
+    "campaigns.send",
+    "dataQuality.read",
+    "dataQuality.manage"
   ];
 
 describe(
@@ -432,6 +434,58 @@ describe(
         assert.equal(roleHasPermission("AGENT", "campaigns.read"), true);
         assert.equal(roleHasPermission("AGENT", "campaigns.manage"), false);
         assert.equal(roleHasPermission("AGENT", "campaigns.send"), false);
+      }
+    );
+  }
+);
+
+
+describe(
+  "contact data quality permissions",
+  () => {
+    it(
+      "contact data import/export is managerial only",
+      () => {
+        for (
+          const role
+          of [
+            "OWNER",
+            "ADMIN",
+            "SUPERVISOR"
+          ] as const
+        ) {
+          assert.equal(
+            roleHasPermission(
+              role,
+              "dataQuality.read"
+            ),
+            true
+          );
+
+          assert.equal(
+            roleHasPermission(
+              role,
+              "dataQuality.manage"
+            ),
+            true
+          );
+        }
+
+        assert.equal(
+          roleHasPermission(
+            "AGENT",
+            "dataQuality.read"
+          ),
+          false
+        );
+
+        assert.equal(
+          roleHasPermission(
+            "AGENT",
+            "dataQuality.manage"
+          ),
+          false
+        );
       }
     );
   }

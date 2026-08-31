@@ -71,6 +71,11 @@ const navigation: Array<{
     permission: "campaigns.view"
   },
   {
+    label: "Dados",
+    href: "/dashboard/data-quality",
+    permission: "dataQuality.view"
+  },
+  {
     label: "Relatórios",
     href: "/dashboard/reports",
     permission: "reports.view"

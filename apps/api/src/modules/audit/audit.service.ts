@@ -12,7 +12,8 @@ export type AuditEntityType =
   | "TAG"
   | "QUICK_REPLY"
   | "WHATSAPP_CONNECTION"
-  | "AUTOMATION_RULE";
+  | "AUTOMATION_RULE"
+  | "CONTACT_DATA";
 
 function jsonValue(
   value: unknown
@@ -209,6 +210,9 @@ export async function snapshotAuditEntity(input: {
             true
         }
       });
+    case "CONTACT_DATA":
+      return null;
+
     case "AUTOMATION_RULE":
       return prisma.automationRule.findFirst({
         where: {

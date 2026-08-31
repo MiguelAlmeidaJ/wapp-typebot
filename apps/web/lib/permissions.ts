@@ -17,7 +17,9 @@ export type UiPermission =
   | "segments.manage"
   | "campaigns.view"
   | "campaigns.manage"
-  | "campaigns.send";
+  | "campaigns.send"
+  | "dataQuality.view"
+  | "dataQuality.manage";
 
 const permissionsByRole: Record<
   Role,
@@ -40,7 +42,9 @@ const permissionsByRole: Record<
     "segments.manage",
     "campaigns.view",
     "campaigns.manage",
-    "campaigns.send"
+    "campaigns.send",
+    "dataQuality.view",
+    "dataQuality.manage"
   ],
   ADMIN: [
     "reports.view",
@@ -59,7 +63,9 @@ const permissionsByRole: Record<
     "segments.manage",
     "campaigns.view",
     "campaigns.manage",
-    "campaigns.send"
+    "campaigns.send",
+    "dataQuality.view",
+    "dataQuality.manage"
   ],
   SUPERVISOR: [
     "reports.view",
@@ -73,7 +79,9 @@ const permissionsByRole: Record<
     "segments.view",
     "segments.manage",
     "campaigns.view",
-    "campaigns.manage"
+    "campaigns.manage",
+    "dataQuality.view",
+    "dataQuality.manage"
   ],
   AGENT: [
     "dashboard.view",

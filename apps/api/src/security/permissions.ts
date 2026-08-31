@@ -33,7 +33,9 @@ export type WappPermission =
   | "segments.manage"
   | "campaigns.read"
   | "campaigns.manage"
-  | "campaigns.send";
+  | "campaigns.send"
+  | "dataQuality.read"
+  | "dataQuality.manage";
 
 const permissionsByRole: Record<
   WappRole,
@@ -72,7 +74,9 @@ const permissionsByRole: Record<
     "segments.manage",
     "campaigns.read",
     "campaigns.manage",
-    "campaigns.send"
+    "campaigns.send",
+    "dataQuality.read",
+    "dataQuality.manage"
   ],
   ADMIN: [
     "contactFields.manage",
@@ -107,7 +111,9 @@ const permissionsByRole: Record<
     "segments.manage",
     "campaigns.read",
     "campaigns.manage",
-    "campaigns.send"
+    "campaigns.send",
+    "dataQuality.read",
+    "dataQuality.manage"
   ],
   SUPERVISOR: [
     "contactFields.manage",
@@ -136,7 +142,9 @@ const permissionsByRole: Record<
     "segments.read",
     "segments.manage",
     "campaigns.read",
-    "campaigns.manage"
+    "campaigns.manage",
+    "dataQuality.read",
+    "dataQuality.manage"
   ],
   AGENT: [
     "automations.read",

@@ -83,6 +83,8 @@ pnpm --filter @wapp/api db:deploy
 echo "[integration] Running API integration suite..."
 pnpm --filter @wapp/api exec \
   tsx --test \
-  src/integration/critical.integration.test.ts
+  --test-concurrency=1 \
+  src/integration/critical.integration.test.ts \
+  src/integration/data-quality.integration.test.ts
 
 echo "[integration] PASS"

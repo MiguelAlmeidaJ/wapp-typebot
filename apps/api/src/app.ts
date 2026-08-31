@@ -23,6 +23,7 @@ import { pipelineRoutes } from "./modules/pipelines/pipeline.routes.js";
 import { taskRoutes } from "./modules/tasks/task.routes.js";
 import { segmentRoutes } from "./modules/segments/segment.routes.js";
 import { campaignRoutes } from "./modules/campaigns/campaign.routes.js";
+import { dataQualityRoutes } from "./modules/data-quality/data-quality.routes.js";
 import { whatsappRoutes } from "./modules/whatsapp/whatsapp.routes.js";
 import {
   startEvolutionHealthMonitor,
@@ -205,6 +206,7 @@ export async function buildApp() {
   await app.register(taskRoutes);
   await app.register(segmentRoutes);
   await app.register(campaignRoutes);
+  await app.register(dataQualityRoutes);
   await app.register(adminRoutes);
   await app.register(auditRoutes);
   await app.register(whatsappRoutes);
