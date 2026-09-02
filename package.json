@@ -54,7 +54,8 @@
     "staging:config": "docker compose -f infra/staging/docker-compose.yml config",
     "contacts:repair-identities": "pnpm --filter @wapp/api contacts:repair-identities",
     "contacts:repair-identities:apply": "pnpm --filter @wapp/api contacts:repair-identities:apply",
-    "prod:template": "node scripts/prod-env-template-check.mjs"
+    "prod:template": "node scripts/prod-env-template-check.mjs",
+    "security:dependencies": "node scripts/rh2-dependency-security-gate.mjs && pnpm audit --audit-level moderate && pnpm audit --prod --audit-level moderate"
   },
   "engines": {
     "node": ">=24 <25",
