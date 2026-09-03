@@ -1,0 +1,9 @@
+/* Conversas: o cabeçalho da lista contém título, busca e filtros.
+   A regra base de .ticket-list__heading usa height: 66px, o que fazia
+   os controles avançarem sobre o primeiro atendimento. */
+.dashboard-shell__page .ticket-list__heading.ticket-list__heading--filters {
+  height: auto;
+  min-height: 0;
+  align-items: stretch;
+  justify-content: initial;
+}
