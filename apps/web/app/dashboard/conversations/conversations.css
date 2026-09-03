@@ -7,3 +7,242 @@
   align-items: stretch;
   justify-content: initial;
 }
+
+/* Conversa aberta: deixa o topo mais compacto e organizado. */
+.dashboard-shell__page .conversation-panel > .chat-header {
+  min-height: 60px;
+  padding-inline: 14px;
+}
+
+.dashboard-shell__page .chat-header__contact {
+  gap: 10px;
+}
+
+.dashboard-shell__page .chat-header__contact .ticket-avatar {
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
+  border-radius: 10px;
+}
+
+.dashboard-shell__page .chat-header__actions {
+  gap: 7px;
+}
+
+.dashboard-shell__page .chat-header__actions .primary-button,
+.dashboard-shell__page .chat-header__actions .ghost-button {
+  min-height: 36px;
+  height: 36px;
+  margin: 0;
+  padding-inline: 13px;
+  border-radius: 10px;
+}
+
+/* Distribui transferência e ferramentas em duas faixas previsíveis.
+   Isso preserva mais espaço vertical para o histórico da conversa. */
+.dashboard-shell__page .inbox-screen--contained .assignment-bar {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: end;
+  gap: 7px 8px;
+  padding: 9px 12px !important;
+}
+
+.dashboard-shell__page
+  .inbox-screen--contained
+  .assignment-bar
+  > div:not(.selected-ticket-tags) {
+  max-width: none;
+}
+
+.dashboard-shell__page
+  .inbox-screen--contained
+  .assignment-bar
+  > div:not(.selected-ticket-tags):nth-of-type(1) {
+  grid-column: 1 / span 3;
+  grid-row: 1;
+}
+
+.dashboard-shell__page
+  .inbox-screen--contained
+  .assignment-bar
+  > div:not(.selected-ticket-tags):nth-of-type(2) {
+  grid-column: 4 / span 4;
+  grid-row: 1;
+}
+
+.dashboard-shell__page
+  .inbox-screen--contained
+  .assignment-bar
+  > .secondary-button {
+  grid-column: 8 / span 3;
+  grid-row: 1;
+  width: 100% !important;
+}
+
+.dashboard-shell__page
+  .inbox-screen--contained
+  .assignment-bar
+  > .ticket-notes-toggle,
+.dashboard-shell__page
+  .inbox-screen--contained
+  .assignment-bar
+  > .ticket-tags-toggle,
+.dashboard-shell__page
+  .inbox-screen--contained
+  .assignment-bar
+  > .conversation-search-toggle,
+.dashboard-shell__page
+  .inbox-screen--contained
+  .assignment-bar
+  > .closed-tickets-toggle,
+.dashboard-shell__page
+  .inbox-screen--contained
+  .assignment-bar
+  > .sla-monitor-toggle,
+.dashboard-shell__page
+  .inbox-screen--contained
+  .assignment-bar
+  > .ticket-history-toggle {
+  grid-row: 2;
+  grid-column: span 2;
+  width: 100% !important;
+  height: 32px !important;
+}
+
+.dashboard-shell__page
+  .inbox-screen--contained
+  .assignment-bar
+  > .selected-ticket-tags,
+.dashboard-shell__page
+  .inbox-screen--contained
+  .assignment-bar
+  > small {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+/* Composer: existem 4 ações antes do campo de texto
+   (agendar, respostas rápidas, anexo e áudio). O grid anterior previa
+   apenas 3 e empurrava o textarea e o botão de envio para colunas erradas. */
+.dashboard-shell__page
+  .conversation-composer.conversation-composer--quick-replies {
+  grid-template-columns:
+    40px
+    40px
+    40px
+    40px
+    minmax(160px, 1fr)
+    46px !important;
+  align-items: end;
+  gap: 8px;
+  min-height: 68px;
+  padding: 11px 14px;
+}
+
+.dashboard-shell__page .conversation-composer .composer__schedule,
+.dashboard-shell__page .conversation-composer .composer__quick-reply,
+.dashboard-shell__page .conversation-composer .composer__attach,
+.dashboard-shell__page .conversation-composer .composer__record {
+  width: 40px;
+  height: 44px;
+  min-width: 40px;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-subtle);
+}
+
+.dashboard-shell__page .conversation-composer .composer__schedule:hover:not(:disabled),
+.dashboard-shell__page .conversation-composer .composer__quick-reply:hover:not(:disabled),
+.dashboard-shell__page .conversation-composer .composer__attach:hover:not(:disabled),
+.dashboard-shell__page .conversation-composer .composer__record:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: #fff;
+}
+
+.dashboard-shell__page .conversation-composer textarea {
+  height: 44px !important;
+  min-height: 44px;
+  border-radius: 11px;
+}
+
+.dashboard-shell__page .conversation-composer .composer__send {
+  width: 46px;
+  height: 44px;
+  border-radius: 11px;
+}
+
+@media (max-width: 760px) {
+  .dashboard-shell__page .inbox-screen--contained .assignment-bar {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .dashboard-shell__page
+    .inbox-screen--contained
+    .assignment-bar
+    > div:not(.selected-ticket-tags) {
+    width: 100%;
+    max-width: none;
+    flex: 1 0 100%;
+  }
+
+  .dashboard-shell__page
+    .inbox-screen--contained
+    .assignment-bar
+    > .secondary-button {
+    width: 100% !important;
+    flex: 1 0 100%;
+  }
+
+  .dashboard-shell__page
+    .inbox-screen--contained
+    .assignment-bar
+    > .ticket-notes-toggle,
+  .dashboard-shell__page
+    .inbox-screen--contained
+    .assignment-bar
+    > .ticket-tags-toggle,
+  .dashboard-shell__page
+    .inbox-screen--contained
+    .assignment-bar
+    > .conversation-search-toggle,
+  .dashboard-shell__page
+    .inbox-screen--contained
+    .assignment-bar
+    > .closed-tickets-toggle,
+  .dashboard-shell__page
+    .inbox-screen--contained
+    .assignment-bar
+    > .sla-monitor-toggle,
+  .dashboard-shell__page
+    .inbox-screen--contained
+    .assignment-bar
+    > .ticket-history-toggle {
+    width: auto !important;
+    flex: 1 1 calc(33.333% - 8px);
+  }
+
+  .dashboard-shell__page
+    .conversation-composer.conversation-composer--quick-replies {
+    grid-template-columns:
+      38px
+      38px
+      38px
+      38px
+      minmax(120px, 1fr)
+      44px !important;
+    gap: 6px;
+    padding-inline: 10px !important;
+  }
+
+  .dashboard-shell__page .conversation-composer .composer__schedule,
+  .dashboard-shell__page .conversation-composer .composer__quick-reply,
+  .dashboard-shell__page .conversation-composer .composer__attach,
+  .dashboard-shell__page .conversation-composer .composer__record {
+    width: 38px;
+    min-width: 38px;
+  }
+}
