@@ -74,13 +74,18 @@
     "release:gate:ci": "bash scripts/rh6-release-gate.sh --ci",
     "release:gate:final": "bash scripts/rh6-release-gate.sh --final",
     "rh6:staging": "bash scripts/rh6-staging-rehearsal.sh",
-    "prod:release:preflight": "bash scripts/prod-release-preflight.sh"
+    "prod:release:preflight": "bash scripts/prod-release-preflight.sh",
+    "visual:qa:routes": "node scripts/visual-qa-routes.mjs",
+    "visual:qa": "bash scripts/visual-qa-run.sh",
+    "visual:qa:check": "node scripts/visual-qa.mjs",
+    "visual:qa:pack": "bash scripts/visual-qa-pack.sh"
   },
   "engines": {
     "node": ">=24 <25",
     "pnpm": ">=10"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "turbo": "^2.5.0",
     "typescript": "^5.9.0"
   },
