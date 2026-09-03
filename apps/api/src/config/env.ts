@@ -20,6 +20,7 @@ const envSchema = z.object({
   TRUST_PROXY: booleanFromEnv,
 
   DATABASE_URL: z.string().url().startsWith("mysql://"),
+  DATABASE_TLS_CA_PATH: z.string().min(1).optional().or(z.literal("")),
   REDIS_URL: z.string().min(1).optional(),
   JOBS_EMBEDDED_WORKER: booleanTrueFromEnv,
   JOBS_MEDIA_CAPTURE_CONCURRENCY: z.coerce

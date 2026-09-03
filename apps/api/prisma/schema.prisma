@@ -231,6 +231,7 @@ model User {
   sentMessages Message[]
   sessions     Session[]
   createdAt    DateTime            @default(now())
+  mustChangePassword Boolean  @default(false)
   updatedAt    DateTime            @updatedAt
 
   @@index([isActive])

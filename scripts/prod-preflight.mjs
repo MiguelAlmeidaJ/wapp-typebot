@@ -508,6 +508,53 @@ try {
     );
   }
 
+  const databaseTlsCaPath =
+    required(
+      env,
+      "DATABASE_TLS_CA_PATH"
+    );
+
+  if (
+    databaseTlsCaPath !==
+      "/etc/wapp/mysql-tls/ca.pem"
+  ) {
+    fail(
+      "DATABASE_TLS_CA_PATH must be /etc/wapp/mysql-tls/ca.pem in the production containers."
+    );
+  }
+
+  for (
+    const [
+      key,
+      url
+    ]
+    of [
+      [
+        "DATABASE_URL",
+        databaseUrl
+      ],
+      [
+        "SHADOW_DATABASE_URL",
+        shadowUrl
+      ]
+    ]
+  ) {
+    if (
+      url.searchParams.get(
+        "sslcert"
+      ) !==
+        databaseTlsCaPath ||
+      url.searchParams.get(
+        "sslaccept"
+      ) !==
+        "strict"
+    ) {
+      fail(
+        `${key} must use sslcert=${databaseTlsCaPath} and sslaccept=strict.`
+      );
+    }
+  }
+
   const shadowDatabase =
     shadowUrl.pathname
       .replace(
@@ -698,6 +745,81 @@ try {
     "MAINTENANCE_STALE_MEDIA_MINUTES",
     5,
     1_440
+  );
+
+  const backupDirectory =
+    required(
+      env,
+      "WAPP_BACKUP_DIR"
+    );
+
+  const backupPassphraseFile =
+    required(
+      env,
+      "WAPP_BACKUP_PASSPHRASE_FILE"
+    );
+
+  if (
+    !backupDirectory.startsWith(
+      "/"
+    ) ||
+    !backupPassphraseFile.startsWith(
+      "/"
+    )
+  ) {
+    fail(
+      "Production backup directory and passphrase file must use absolute host paths."
+    );
+  }
+
+  const repositoryRoot =
+    resolve(
+      process.cwd()
+    );
+
+  const isInsideRepository =
+    value =>
+      value ===
+        repositoryRoot ||
+      value.startsWith(
+        repositoryRoot +
+          "/"
+      ) ||
+      value.startsWith(
+        repositoryRoot +
+          "\\"
+      );
+
+  if (
+    isInsideRepository(
+      backupDirectory
+    ) ||
+    isInsideRepository(
+      backupPassphraseFile
+    )
+  ) {
+    fail(
+      "Production backup storage and passphrase file must live outside the application repository."
+    );
+  }
+
+  integerInRange(
+    env,
+    "WAPP_BACKUP_RETENTION_DAYS",
+    7,
+    3650
+  );
+
+  integerInRange(
+    env,
+    "WAPP_BACKUP_MIN_KEEP",
+    1,
+    365
+  );
+
+  booleanValue(
+    env,
+    "WAPP_BACKUP_AUTO_PRUNE"
   );
 
   webUrl(

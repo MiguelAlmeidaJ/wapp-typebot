@@ -80,3 +80,7 @@ infra/production/.env.production
 
 *.patch
 **/*.patch
+
+# --- WAPP RH3 / MYSQL TLS MATERIAL ---
+infra/production/mysql-tls/
+# --- /WAPP RH3 ---

@@ -6,16 +6,22 @@ const PRISMA_VERSION =
   "7.10.0";
 
 const MARIADB_MINIMUM =
-  "3.4.6";
+  "3.5.3";
 
 const MARIADB_OVERRIDE =
-  "3.4.6";
+  "3.5.3";
 
 const DEEPMERGE_MINIMUM =
   "8.0.0";
 
 const DEEPMERGE_OVERRIDE =
   "8.0.2";
+
+const MYSQL2_MINIMUM =
+  "3.23.1";
+
+const MYSQL2_OVERRIDE =
+  "3.23.1";
 
 function fail(
   message
@@ -303,9 +309,10 @@ for (
 for (
   const marker
   of [
-    "'@prisma/adapter-mariadb>mariadb': 3.4.6",
+    "'@prisma/adapter-mariadb>mariadb': 3.5.3",
     "'@prisma/config>deepmerge-ts': 8.0.2"
-  ]
+,
+    "'prisma>mysql2': 3.23.1"  ]
 ) {
   if (
     !workspace.includes(
@@ -353,6 +360,23 @@ if (
   );
 }
 
+const mysql2Versions =
+  assertFloor(
+    lock,
+    "mysql2",
+    MYSQL2_MINIMUM
+  );
+
+if (
+  !mysql2Versions.includes(
+    MYSQL2_OVERRIDE
+  )
+) {
+  fail(
+    `Expected scoped mysql2 override ${MYSQL2_OVERRIDE}; resolved ${mysql2Versions.join(", ")}.`
+  );
+}
+
 const deepmergeVersions =
   assertFloor(
     lock,
@@ -374,8 +398,10 @@ for (
   const vulnerableMarker
   of [
     "mariadb@3.4.5",
-    "deepmerge-ts@7.1.5"
-  ]
+    "deepmerge-ts@7.1.5",
+    "mysql2@3.21.",
+    "mysql2@3.22.",
+    "mysql2@3.23.0"  ]
 ) {
   if (
     lock.includes(
@@ -389,5 +415,5 @@ for (
 }
 
 console.log(
-  `[RH2] dependency gate PASS — Prisma ${PRISMA_VERSION}; mariadb ${mariadbVersions.join(", ")}; deepmerge-ts ${deepmergeVersions.join(", ")}.`
+  `[RH2] dependency gate PASS — Prisma ${PRISMA_VERSION}; mariadb ${mariadbVersions.join(", ")}; deepmerge-ts ${deepmergeVersions.join(", ")}; mysql2 ${mysql2Versions.join(", ")}.`
 );

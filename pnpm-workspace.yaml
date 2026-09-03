@@ -20,6 +20,7 @@ minimumReleaseAgeExclude:
 
 # --- WAPP RH2 / SECURITY OVERRIDES ---
 overrides:
-  '@prisma/adapter-mariadb>mariadb': 3.4.6
+  '@prisma/adapter-mariadb>mariadb': 3.5.3
   '@prisma/config>deepmerge-ts': 8.0.2
+  'prisma>mysql2': 3.23.1
 # --- /WAPP RH2 ---

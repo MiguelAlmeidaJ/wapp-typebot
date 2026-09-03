@@ -25,12 +25,12 @@ The Prisma MariaDB adapter previously resolved `mariadb 3.4.5`.
 RH2 applies a scoped pnpm override:
 
 ```text
-@prisma/adapter-mariadb>mariadb = 3.4.6
+@prisma/adapter-mariadb>mariadb = 3.5.3
 ```
 
 This is intentionally the smallest patched move in the same 3.4 line.
 
-The RH2 lockfile gate rejects any resolved MariaDB connector below `3.4.6`.
+The RH2 lockfile gate rejects any resolved MariaDB connector below `3.5.3`.
 
 ## deepmerge-ts
 
@@ -92,3 +92,36 @@ overrides.
 pnpm 11 no longer reads `pnpm.overrides` from the root `package.json`, so the
 security overrides must remain in the workspace YAML. The RH2 dependency gate
 fails if the obsolete root `pnpm` block returns.
+
+
+## MariaDB published security line
+
+The initial RH2 plan targeted `mariadb 3.4.6`. The npm registry used by this
+workspace does not publish that release and reports `3.5.3` as the current
+published patched GA line.
+
+Wapp therefore pins the transitive Prisma MariaDB connector to `3.5.3`.
+The dependency gate rejects older MariaDB resolutions.
+
+## mysql2 transitively used by Prisma
+
+After the Prisma 7.10.0 alignment, the dependency audit exposed two active
+advisories through Prisma's transitive `mysql2` dependency:
+
+- authentication-plugin downgrade / plaintext credential exposure;
+- unbounded zlib inflate / decompression-bomb denial of service.
+
+The common patched floor is `mysql2 >= 3.23.1`.
+
+Wapp applies the scoped pnpm 11 workspace override:
+
+```text
+prisma>mysql2 = 3.23.1
+```
+
+This is intentionally scoped to Prisma instead of forcing every future
+workspace consumer of mysql2 to the same resolution.
+
+The RH2 gate rejects any mysql2 resolution below 3.23.1. As with the
+deepmerge-ts override, this override should be re-evaluated when Prisma ships a
+stable release whose own dependency tree already satisfies the security floor.

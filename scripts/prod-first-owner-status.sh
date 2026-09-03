@@ -8,22 +8,19 @@ ENV_FILE="${WAPP_PROD_ENV:-infra/production/.env.production}"
 COMPOSE_FILE="infra/production/docker-compose.yml"
 
 if [[ ! -f "$ENV_FILE" ]]; then
-  echo "ERROR: missing $ENV_FILE"
-  echo "Run pnpm prod:init or provide WAPP_PROD_ENV."
+  echo "ERROR: missing production env: $ENV_FILE"
   exit 1
 fi
 
-echo "[prod:config] MySQL TLS assets..."
+node scripts/prod-preflight.mjs
 bash scripts/prod-mysql-tls-check.sh
 
-echo "[prod:config] Preflight..."
-WAPP_PROD_ENV="$ENV_FILE" node scripts/prod-preflight.mjs
-
-echo "[prod:config] Compose config..."
 docker compose \
   --env-file "$ENV_FILE" \
   -f "$COMPOSE_FILE" \
-  config \
-  --quiet
-
-echo "[prod:config] PASS — production Compose is structurally valid."
+  run \
+  --rm \
+  -T \
+  api \
+  node \
+  dist/scripts/prod-first-owner-status.js

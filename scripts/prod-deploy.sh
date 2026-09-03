@@ -13,6 +13,9 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
+echo "[prod:deploy] MySQL TLS assets..."
+bash scripts/prod-mysql-tls-check.sh
+
 echo "[prod:deploy] Preflight..."
 WAPP_PROD_ENV="$ENV_FILE" node scripts/prod-preflight.mjs
 
