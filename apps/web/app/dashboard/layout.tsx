@@ -3,8 +3,8 @@ import type {
 } from "react";
 
 import {
-  NotificationCenter
-} from "@/components/notifications/notification-center";
+  DashboardShell
+} from "@/components/dashboard/dashboard-shell";
 
 export default function DashboardLayout({
   children
@@ -13,9 +13,8 @@ export default function DashboardLayout({
     ReactNode;
 }>) {
   return (
-    <>
+    <DashboardShell>
       {children}
-      <NotificationCenter />
-    </>
+    </DashboardShell>
   );
 }

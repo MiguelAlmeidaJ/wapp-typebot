@@ -12,6 +12,13 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import fixWebmDuration from "fix-webm-duration";
+import {
+  Cable,
+  Inbox,
+  Search,
+  SlidersHorizontal,
+  Workflow
+} from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { MessageMedia } from "@/components/messages/message-media";
@@ -2740,27 +2747,29 @@ function ConversationsPageContent() {
           <h1>Conversas</h1>
         </div>
         <div className="inbox-topbar__right">
-          <span>{session.company.name}</span>
           <button
             className="ghost-button"
             onClick={() => router.push("/dashboard/queues")}
             type="button"
           >
-            Filas
+            <Inbox aria-hidden="true" size={15} strokeWidth={1.9} />
+            <span>Filas</span>
           </button>
           <button
             className="ghost-button"
             onClick={() => router.push("/dashboard/automations")}
             type="button"
           >
-            Automações
+            <Workflow aria-hidden="true" size={15} strokeWidth={1.9} />
+            <span>Automações</span>
           </button>
           <button
             className="ghost-button"
             onClick={() => router.push("/dashboard/connections")}
             type="button"
           >
-            Conexões
+            <Cable aria-hidden="true" size={15} strokeWidth={1.9} />
+            <span>Conexões</span>
           </button>
         </div>
       </header>
@@ -2818,10 +2827,9 @@ function ConversationsPageContent() {
             </div>
 
             <label className="inbox-ticket-search">
-              <span>
-                Buscar
-              </span>
+              <Search aria-hidden="true" size={15} strokeWidth={1.9} />
               <input
+                aria-label="Buscar conversas"
                 onChange={event =>
                   setInboxFilters(
                     current => ({
@@ -2913,7 +2921,8 @@ function ConversationsPageContent() {
               }
             >
               <summary>
-                Filtros
+                <SlidersHorizontal aria-hidden="true" size={14} strokeWidth={1.9} />
+                Mais filtros
                 {activeInboxFilterCount > 0 && (
                   <span>
                     {activeInboxFilterCount}

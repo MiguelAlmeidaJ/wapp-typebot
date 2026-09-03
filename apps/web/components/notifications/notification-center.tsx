@@ -6,6 +6,7 @@ import {
   useRef,
   useState
 } from "react";
+import { Bell } from "lucide-react";
 import {
   useRouter
 } from "next/navigation";
@@ -170,6 +171,11 @@ export function NotificationCenter() {
       false
     );
 
+  const centerRef =
+    useRef<HTMLElement | null>(
+      null
+    );
+
   const load =
     useCallback(
       async () => {
@@ -271,6 +277,56 @@ export function NotificationCenter() {
       };
     },
     []
+  );
+
+  useEffect(
+    () => {
+      if (!open) {
+        return;
+      }
+
+      function handlePointerDown(
+        event: PointerEvent
+      ) {
+        if (
+          centerRef.current &&
+          !centerRef.current.contains(
+            event.target as Node
+          )
+        ) {
+          setOpen(false);
+        }
+      }
+
+      function handleKeyDown(
+        event: KeyboardEvent
+      ) {
+        if (event.key === "Escape") {
+          setOpen(false);
+        }
+      }
+
+      document.addEventListener(
+        "pointerdown",
+        handlePointerDown
+      );
+      document.addEventListener(
+        "keydown",
+        handleKeyDown
+      );
+
+      return () => {
+        document.removeEventListener(
+          "pointerdown",
+          handlePointerDown
+        );
+        document.removeEventListener(
+          "keydown",
+          handleKeyDown
+        );
+      };
+    },
+    [open]
   );
 
   useEffect(
@@ -441,8 +497,14 @@ export function NotificationCenter() {
           ? "notification-center notification-center--open"
           : "notification-center"
       }
+      ref={centerRef}
     >
       <button
+        aria-label={
+          unreadCount > 0
+            ? `${unreadCount} notificação${unreadCount === 1 ? "" : "ões"} não lida${unreadCount === 1 ? "" : "s"}`
+            : "Notificações"
+        }
         aria-expanded={
           open
         }
@@ -464,9 +526,11 @@ export function NotificationCenter() {
         }}
         type="button"
       >
-        <span>
-          Avisos
-        </span>
+        <Bell
+          aria-hidden="true"
+          size={18}
+          strokeWidth={1.9}
+        />
 
         {unreadCount >
           0 && (
