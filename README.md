@@ -25,6 +25,8 @@ docs/
 legacy/
 ```
 
+Veja a [documentação da integração com Typebot](docs/typebot-integration.md).
+
 ## Ambiente local
 
 ```bash

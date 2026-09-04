@@ -2,6 +2,40 @@ import { AppError } from "../../errors/app-error.js";
 import { prisma } from "../../lib/database.js";
 import { publishRealtime } from "../realtime/realtime.bus.js";
 
+function queueSlug(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 72) || "fila";
+}
+
+async function availableQueueSlug(companyId: string, name: string) {
+  const base = queueSlug(name);
+  const matches = await prisma.queue.findMany({
+    where: {
+      companyId,
+      OR: [
+        { slug: base },
+        { slug: { startsWith: `${base}-` } }
+      ]
+    },
+    select: { slug: true }
+  });
+  const used = new Set(matches.map(queue => queue.slug));
+
+  if (!used.has(base)) return base;
+
+  for (let suffix = 2; suffix < 10_000; suffix += 1) {
+    const candidate = `${base}-${suffix}`;
+    if (!used.has(candidate)) return candidate;
+  }
+
+  throw new AppError("Não foi possível gerar o slug da fila.", 409, "QUEUE_SLUG_EXHAUSTED");
+}
+
 export async function listQueues(companyId: string) {
   return prisma.queue.findMany({
     where: {
@@ -58,7 +92,8 @@ export async function createQueue(input: {
   const queue = await prisma.queue.create({
     data: {
       companyId: input.companyId,
-      name: input.name.trim()
+      name: input.name.trim(),
+      slug: await availableQueueSlug(input.companyId, input.name)
     }
   });
 

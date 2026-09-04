@@ -13,6 +13,7 @@ import {
 import { recordTicketEvent } from "./ticket-event.service.js";
 import { storeMedia } from "../media/media-storage.js";
 import { persistReaction } from "../messages/message-reaction.service.js";
+import { finishChatbotSessionForTicket } from "../chatbots/chatbot.service.js";
 
 export type TicketListStatus =
   | "ACTIVE"
@@ -504,6 +505,8 @@ export async function claimTicket(input: {
     include: ticketInclude
   });
 
+  await finishChatbotSessionForTicket(ticket.id, "HUMAN_TAKEOVER");
+
   await recordTicketEvent({
     companyId:
       input.companyId,
@@ -603,6 +606,10 @@ export async function transferTicket(input: {
     include: ticketInclude
   });
 
+  if (updated.assignedMembershipId) {
+    await finishChatbotSessionForTicket(ticket.id, "HUMAN_TAKEOVER");
+  }
+
   await recordTicketEvent({
     companyId:
       input.companyId,
@@ -683,6 +690,8 @@ export async function closeTicket(input: {
       closedAt: new Date()
     }
   });
+
+  await finishChatbotSessionForTicket(ticket.id, "TICKET_CLOSED");
 
   await recordTicketEvent({
     companyId:

@@ -51,6 +51,7 @@ import { queueRoutes } from "./modules/queues/queue.routes.js";
 import { quickReplyRoutes } from "./modules/quick-replies/quick-reply.routes.js";
 import { scheduledMessageRoutes } from "./modules/scheduled-messages/scheduled-message.routes.js";
 import { evolutionWebhookRoutes } from "./modules/webhooks/evolution-webhook.routes.js";
+import { chatbotRoutes } from "./modules/chatbots/chatbot.routes.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -200,6 +201,7 @@ export async function buildApp() {
   await app.register(observabilityRoutes);
   await app.register(authRoutes);
   await app.register(automationRoutes);
+  await app.register(chatbotRoutes);
   await app.register(contactRoutes);
   await app.register(contactCrmRoutes);
   await app.register(pipelineRoutes);

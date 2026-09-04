@@ -178,6 +178,17 @@ enum CampaignConsentSource {
   INBOUND_KEYWORD
 }
 
+enum ChatbotEngine {
+  TYPEBOT
+}
+
+enum ChatbotSessionStatus {
+  STARTING
+  ACTIVE
+  FINISHED
+  FAILED
+}
+
 enum MembershipRole {
   OWNER
   ADMIN
@@ -186,12 +197,12 @@ enum MembershipRole {
 }
 
 model Company {
-  id                      String               @id @default(uuid()) @db.Char(36)
-  name                    String               @db.VarChar(160)
-  slug                    String               @unique @db.VarChar(80)
-  status                  CompanyStatus        @default(ACTIVE)
-  firstResponseSlaMinutes Int                  @default(15)
-  replySlaMinutes         Int                  @default(30)
+  id                      String                   @id @default(uuid()) @db.Char(36)
+  name                    String                   @db.VarChar(160)
+  slug                    String                   @unique @db.VarChar(80)
+  status                  CompanyStatus            @default(ACTIVE)
+  firstResponseSlaMinutes Int                      @default(15)
+  replySlaMinutes         Int                      @default(30)
   memberships             CompanyMembership[]
   whatsappConnections     WhatsAppConnection[]
   contacts                Contact[]
@@ -203,74 +214,76 @@ model Company {
   scheduledMessages       ScheduledMessage[]
   queues                  Queue[]
   sessions                Session[]
-  createdAt               DateTime             @default(now())
-  updatedAt               DateTime             @updatedAt
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
   tags                    Tag[]
   auditLogs               AuditLog[]
-
-  @@index([status])
   notifications           Notification[]
   contactFieldDefinitions ContactFieldDefinition[]
-  crmPipelines             CrmPipeline[]
-  contactStageTransitions  ContactStageTransition[]
-  crmTasks                 CrmTask[]
-  crmTaskEvents            CrmTaskEvent[]
-  contactSegments          ContactSegment[]
-  campaigns                Campaign[]
-  campaignEvents           CampaignEvent[]
-  campaignConsents         ContactCampaignConsent[]
+  crmPipelines            CrmPipeline[]
+  contactStageTransitions ContactStageTransition[]
+  crmTasks                CrmTask[]
+  crmTaskEvents           CrmTaskEvent[]
+  contactSegments         ContactSegment[]
+  campaigns               Campaign[]
+  campaignEvents          CampaignEvent[]
+  campaignConsents        ContactCampaignConsent[]
+  chatbotFlows            ChatbotFlow[]
+  chatbotSessions         ChatbotSession[]
+
+  @@index([status])
 }
 
 model User {
-  id           String              @id @default(uuid()) @db.Char(36)
-  name         String              @db.VarChar(160)
-  email        String              @unique @db.VarChar(190)
-  passwordHash String              @db.VarChar(255)
-  isActive     Boolean             @default(true)
-  memberships  CompanyMembership[]
-  sentMessages Message[]
-  sessions     Session[]
-  createdAt    DateTime            @default(now())
-  mustChangePassword Boolean  @default(false)
-  updatedAt    DateTime            @updatedAt
+  id                 String              @id @default(uuid()) @db.Char(36)
+  name               String              @db.VarChar(160)
+  email              String              @unique @db.VarChar(190)
+  passwordHash       String              @db.VarChar(255)
+  isActive           Boolean             @default(true)
+  memberships        CompanyMembership[]
+  sentMessages       Message[]
+  sessions           Session[]
+  createdAt          DateTime            @default(now())
+  mustChangePassword Boolean             @default(false)
+  updatedAt          DateTime            @updatedAt
 
   @@index([isActive])
 }
 
 model CompanyMembership {
-  id                  String         @id @default(uuid()) @db.Char(36)
-  companyId           String         @db.Char(36)
-  userId              String         @db.Char(36)
-  role                MembershipRole @default(AGENT)
-  isActive            Boolean        @default(true)
-  company             Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessions            Session[]
-  queueMemberships    QueueMember[]
-  assignedTickets     Ticket[]
-  ticketEvents        TicketEvent[]
-  createdQuickReplies QuickReply[]
-  createdTicketTags   TicketTag[]
-  ticketNotes         TicketNote[]
+  id                      String                   @id @default(uuid()) @db.Char(36)
+  companyId               String                   @db.Char(36)
+  userId                  String                   @db.Char(36)
+  role                    MembershipRole           @default(AGENT)
+  isActive                Boolean                  @default(true)
+  company                 Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions                Session[]
+  queueMemberships        QueueMember[]
+  assignedTickets         Ticket[]
+  ticketEvents            TicketEvent[]
+  createdQuickReplies     QuickReply[]
+  createdTicketTags       TicketTag[]
+  ticketNotes             TicketNote[]
   scheduledMessages       ScheduledMessage[]
-  auditLogs           AuditLog[]
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  auditLogs               AuditLog[]
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  messageReactions        MessageReaction[]
+  notifications           Notification[]
+  pipelineStateUpdates    ContactPipelineState[]   @relation("ContactPipelineStateUpdatedBy")
+  contactStageTransitions ContactStageTransition[] @relation("ContactStageTransitionActor")
+  assignedCrmTasks        CrmTask[]                @relation("CrmTaskAssignee")
+  createdCrmTasks         CrmTask[]                @relation("CrmTaskCreator")
+  crmTaskEvents           CrmTaskEvent[]           @relation("CrmTaskEventActor")
+  createdContactSegments  ContactSegment[]
+  createdCampaigns        Campaign[]
+  campaignEvents          CampaignEvent[]
+  campaignConsentUpdates  ContactCampaignConsent[]
 
   @@unique([companyId, userId])
   @@index([userId, isActive])
   @@index([companyId, role])
-  messageReactions MessageReaction[]
-  notifications           Notification[]
-  pipelineStateUpdates     ContactPipelineState[] @relation("ContactPipelineStateUpdatedBy")
-  contactStageTransitions  ContactStageTransition[] @relation("ContactStageTransitionActor")
-  assignedCrmTasks         CrmTask[] @relation("CrmTaskAssignee")
-  createdCrmTasks          CrmTask[] @relation("CrmTaskCreator")
-  crmTaskEvents            CrmTaskEvent[] @relation("CrmTaskEventActor")
-  createdContactSegments   ContactSegment[]
-  createdCampaigns         Campaign[]
-  campaignEvents           CampaignEvent[]
-  campaignConsentUpdates   ContactCampaignConsent[]
 }
 
 model Session {
@@ -295,64 +308,65 @@ model Session {
 }
 
 model WhatsAppConnection {
-  id             String                   @id @default(uuid()) @db.Char(36)
-  companyId      String                   @db.Char(36)
-  name           String                   @db.VarChar(120)
-  provider       WhatsAppProvider         @default(EVOLUTION_BAILEYS)
-  instanceName   String                   @unique @db.VarChar(120)
-  status         WhatsAppConnectionStatus @default(CREATED)
-  phoneNumber    String?                  @db.VarChar(32)
-  profileName    String?                  @db.VarChar(160)
-  lastError      String?                  @db.Text
-  lastEventAt    DateTime?
-  healthStatus   WhatsAppHealthStatus      @default(UNKNOWN)
-  lastHealthCheckAt DateTime?
-  lastHealthOkAt DateTime?
-  healthError    String?                   @db.Text
-  consecutiveHealthFailures Int            @default(0)
-  acceptGroups   Boolean                  @default(false)
-  defaultQueueId String?                  @db.Char(36)
-  company        Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  defaultQueue   Queue?                   @relation(fields: [defaultQueueId], references: [id], onDelete: SetNull)
-  tickets        Ticket[]
-  messages       Message[]
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
+  id                        String                   @id @default(uuid()) @db.Char(36)
+  companyId                 String                   @db.Char(36)
+  name                      String                   @db.VarChar(120)
+  provider                  WhatsAppProvider         @default(EVOLUTION_BAILEYS)
+  instanceName              String                   @unique @db.VarChar(120)
+  status                    WhatsAppConnectionStatus @default(CREATED)
+  phoneNumber               String?                  @db.VarChar(32)
+  profileName               String?                  @db.VarChar(160)
+  lastError                 String?                  @db.Text
+  lastEventAt               DateTime?
+  healthStatus              WhatsAppHealthStatus     @default(UNKNOWN)
+  lastHealthCheckAt         DateTime?
+  lastHealthOkAt            DateTime?
+  healthError               String?                  @db.Text
+  consecutiveHealthFailures Int                      @default(0)
+  acceptGroups              Boolean                  @default(false)
+  defaultQueueId            String?                  @db.Char(36)
+  company                   Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  defaultQueue              Queue?                   @relation(fields: [defaultQueueId], references: [id], onDelete: SetNull)
+  tickets                   Ticket[]
+  messages                  Message[]
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+  campaigns                 Campaign[]
+  chatbotFlows              ChatbotFlow[]
 
   @@index([companyId, status])
   @@index([companyId, healthStatus])
   @@index([companyId, createdAt])
   @@index([companyId, defaultQueueId])
-  campaigns                Campaign[]
 }
 
 model Contact {
-  id           String    @id @default(uuid()) @db.Char(36)
-  companyId    String    @db.Char(36)
-  remoteJid    String    @db.VarChar(190)
-  phoneNumber  String?   @db.VarChar(32)
-  name         String    @db.VarChar(190)
-  whatsappName String?   @db.VarChar(190)
-  email        String?   @db.VarChar(190)
-  notes        String?   @db.Text
-  isGroup      Boolean   @default(false)
-  lastSeenAt   DateTime?
-  company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  tickets      Ticket[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                 String                   @id @default(uuid()) @db.Char(36)
+  companyId          String                   @db.Char(36)
+  remoteJid          String                   @db.VarChar(190)
+  phoneNumber        String?                  @db.VarChar(32)
+  name               String                   @db.VarChar(190)
+  whatsappName       String?                  @db.VarChar(190)
+  email              String?                  @db.VarChar(190)
+  notes              String?                  @db.Text
+  isGroup            Boolean                  @default(false)
+  lastSeenAt         DateTime?
+  company            Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tickets            Ticket[]
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  customFieldValues  ContactFieldValue[]
+  pipelineStates     ContactPipelineState[]
+  stageTransitions   ContactStageTransition[]
+  crmTasks           CrmTask[]
+  notifications      Notification[]
+  campaignConsent    ContactCampaignConsent?
+  campaignRecipients CampaignRecipient[]
 
   @@unique([companyId, remoteJid])
   @@index([companyId, phoneNumber])
   @@index([companyId, name])
   @@index([companyId, email])
-  customFieldValues       ContactFieldValue[]
-  pipelineStates           ContactPipelineState[]
-  stageTransitions         ContactStageTransition[]
-  crmTasks                 CrmTask[]
-  notifications            Notification[]
-  campaignConsent          ContactCampaignConsent?
-  campaignRecipients       CampaignRecipient[]
 }
 
 model Ticket {
@@ -382,9 +396,12 @@ model Ticket {
   events               TicketEvent[]
   tags                 TicketTag[]
   notes                TicketNote[]
-  scheduledMessages       ScheduledMessage[]
+  scheduledMessages    ScheduledMessage[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
+  notifications        Notification[]
+  crmTasks             CrmTask[]
+  chatbotSessions      ChatbotSession[]
 
   @@index([companyId, status, lastMessageAt])
   @@index([companyId, status, waitingSince])
@@ -392,8 +409,6 @@ model Ticket {
   @@index([contactId, status])
   @@index([companyId, queueId, status])
   @@index([companyId, assignedMembershipId, status])
-  notifications           Notification[]
-  crmTasks                 CrmTask[]
 }
 
 model Tag {
@@ -505,19 +520,20 @@ model Message {
   whatsappConnection   WhatsAppConnection    @relation(fields: [whatsappConnectionId], references: [id], onDelete: Cascade)
   sentByUser           User?                 @relation(fields: [sentByUserId], references: [id], onDelete: SetNull)
   createdAt            DateTime              @default(now())
+  reactions            MessageReaction[]
 
   @@unique([whatsappConnectionId, externalId])
   @@index([ticketId, timestamp])
   @@index([companyId, timestamp])
   @@index([companyId, mediaStatus])
   @@index([companyId, deliveryStatus])
-  reactions              MessageReaction[]
 }
 
 model Queue {
   id                 String               @id @default(uuid()) @db.Char(36)
   companyId          String               @db.Char(36)
   name               String               @db.VarChar(120)
+  slug               String               @db.VarChar(80)
   isActive           Boolean              @default(true)
   company            Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   members            QueueMember[]
@@ -527,7 +543,52 @@ model Queue {
   updatedAt          DateTime             @updatedAt
 
   @@unique([companyId, name])
+  @@unique([companyId, slug])
   @@index([companyId, isActive])
+}
+
+model ChatbotFlow {
+  id                   String             @id @default(uuid()) @db.Char(36)
+  companyId            String             @db.Char(36)
+  whatsappConnectionId String             @db.Char(36)
+  name                 String             @db.VarChar(160)
+  engine               ChatbotEngine      @default(TYPEBOT)
+  externalId           String             @db.VarChar(190)
+  isActive             Boolean            @default(true)
+  activeKey            String?            @unique @db.VarChar(100)
+  company              Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  whatsappConnection   WhatsAppConnection @relation(fields: [whatsappConnectionId], references: [id], onDelete: Cascade)
+  sessions             ChatbotSession[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([companyId, isActive, name])
+  @@index([whatsappConnectionId, isActive])
+}
+
+model ChatbotSession {
+  id                String               @id @default(uuid()) @db.Char(36)
+  companyId         String               @db.Char(36)
+  ticketId          String               @db.Char(36)
+  flowId            String               @db.Char(36)
+  engine            ChatbotEngine        @default(TYPEBOT)
+  externalSessionId String?              @db.VarChar(190)
+  activeKey         String?              @unique @db.VarChar(100)
+  status            ChatbotSessionStatus @default(STARTING)
+  lastInput         Json?
+  lastError         String?              @db.Text
+  finishReason      String?              @db.VarChar(80)
+  startedAt         DateTime             @default(now())
+  finishedAt        DateTime?
+  company           Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  ticket            Ticket               @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  flow              ChatbotFlow          @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([companyId, ticketId, status])
+  @@index([flowId, startedAt])
+  @@index([externalSessionId])
 }
 
 model QueueMember {
@@ -541,7 +602,6 @@ model QueueMember {
   @@unique([queueId, membershipId])
   @@index([membershipId])
 }
-
 
 model AuditLog {
   id                String             @id @default(uuid()) @db.Char(36)
@@ -566,21 +626,19 @@ model AuditLog {
   @@index([actorMembershipId, createdAt])
 }
 
-
 model MaintenanceRun {
-  id         String   @id @default(uuid()) @db.Char(36)
-  source     String   @db.VarChar(20)
-  status     String   @db.VarChar(20)
+  id         String    @id @default(uuid()) @db.Char(36)
+  source     String    @db.VarChar(20)
+  status     String    @db.VarChar(20)
   result     Json?
-  error      String?  @db.Text
+  error      String?   @db.Text
   startedAt  DateTime
   finishedAt DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   @@index([status, createdAt])
   @@index([createdAt])
 }
-
 
 model MessageReaction {
   id                    String             @id @default(uuid()) @db.Char(36)
@@ -603,20 +661,19 @@ model MessageReaction {
   @@index([reactedByMembershipId])
 }
 
-
 model AutomationRule {
-  id                  String                     @id @default(uuid()) @db.Char(36)
-  companyId           String                     @db.Char(36)
-  name                String                     @db.VarChar(160)
-  isActive            Boolean                    @default(true)
-  trigger             AutomationTrigger
-  keywordContains     String?                    @db.VarChar(190)
-  onlyIfUnassigned    Boolean                    @default(false)
-  conversationType    AutomationConversationType @default(ALL)
-  priority            Int                        @default(100)
-  createdByMembershipId String?                  @db.Char(36)
-  createdAt           DateTime                   @default(now())
-  updatedAt           DateTime                   @updatedAt
+  id                    String                     @id @default(uuid()) @db.Char(36)
+  companyId             String                     @db.Char(36)
+  name                  String                     @db.VarChar(160)
+  isActive              Boolean                    @default(true)
+  trigger               AutomationTrigger
+  keywordContains       String?                    @db.VarChar(190)
+  onlyIfUnassigned      Boolean                    @default(false)
+  conversationType      AutomationConversationType @default(ALL)
+  priority              Int                        @default(100)
+  createdByMembershipId String?                    @db.Char(36)
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
 
   @@index([companyId, isActive, trigger, priority])
   @@index([companyId, updatedAt])
@@ -657,7 +714,6 @@ model AutomationRun {
   @@index([ticketId, createdAt])
 }
 
-
 model ScheduledMessage {
   id                    String                 @id @default(uuid()) @db.Char(36)
   companyId             String                 @db.Char(36)
@@ -681,7 +737,6 @@ model ScheduledMessage {
   @@index([ticketId, status, scheduledFor])
   @@index([createdByMembershipId, createdAt])
 }
-
 
 model Notification {
   id              String            @id @default(uuid()) @db.Char(36)
@@ -710,21 +765,20 @@ model Notification {
   @@index([contactId, updatedAt])
 }
 
-
 model ContactFieldDefinition {
-  id        String           @id @default(uuid()) @db.Char(36)
-  companyId String           @db.Char(36)
-  key       String           @db.VarChar(50)
-  label     String           @db.VarChar(120)
+  id        String              @id @default(uuid()) @db.Char(36)
+  companyId String              @db.Char(36)
+  key       String              @db.VarChar(50)
+  label     String              @db.VarChar(120)
   type      ContactFieldType
   options   Json?
-  required  Boolean          @default(false)
-  position  Int              @default(0)
-  isActive  Boolean          @default(true)
-  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  required  Boolean             @default(false)
+  position  Int                 @default(0)
+  isActive  Boolean             @default(true)
+  company   Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   values    ContactFieldValue[]
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
 
   @@unique([companyId, key])
   @@index([companyId, isActive, position])
@@ -744,7 +798,6 @@ model ContactFieldValue {
   @@index([fieldId, updatedAt])
   @@index([contactId, updatedAt])
 }
-
 
 model CrmPipeline {
   id          String                   @id @default(uuid()) @db.Char(36)
@@ -823,7 +876,6 @@ model ContactStageTransition {
   @@index([pipelineId, createdAt])
 }
 
-
 model CrmTask {
   id                    String            @id @default(uuid()) @db.Char(36)
   companyId             String            @db.Char(36)
@@ -875,7 +927,6 @@ model CrmTaskEvent {
   @@index([taskId, createdAt])
 }
 
-
 model ContactSegment {
   id                    String             @id @default(uuid()) @db.Char(36)
   companyId             String             @db.Char(36)
@@ -888,13 +939,12 @@ model ContactSegment {
   createdByMembership   CompanyMembership? @relation(fields: [createdByMembershipId], references: [id], onDelete: SetNull)
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
+  campaigns             Campaign[]
 
   @@unique([companyId, name])
   @@index([companyId, isActive, updatedAt])
   @@index([createdByMembershipId, updatedAt])
-  campaigns                Campaign[]
 }
-
 
 model ContactCampaignConsent {
   id                    String                @id @default(uuid()) @db.Char(36)
@@ -915,35 +965,35 @@ model ContactCampaignConsent {
 }
 
 model Campaign {
-  id                    String             @id @default(uuid()) @db.Char(36)
-  companyId             String             @db.Char(36)
-  segmentId             String             @db.Char(36)
-  whatsappConnectionId  String             @db.Char(36)
-  createdByMembershipId String             @db.Char(36)
-  name                  String             @db.VarChar(160)
-  body                  String             @db.Text
-  status                CampaignStatus     @default(DRAFT)
-  ratePerMinute         Int                @default(6)
+  id                    String              @id @default(uuid()) @db.Char(36)
+  companyId             String              @db.Char(36)
+  segmentId             String              @db.Char(36)
+  whatsappConnectionId  String              @db.Char(36)
+  createdByMembershipId String              @db.Char(36)
+  name                  String              @db.VarChar(160)
+  body                  String              @db.Text
+  status                CampaignStatus      @default(DRAFT)
+  ratePerMinute         Int                 @default(6)
   windowStartAt         DateTime
   windowEndAt           DateTime
   audienceSnapshotAt    DateTime?
   segmentDefinition     Json?
-  segmentContacts       Int                @default(0)
-  eligibleRecipients    Int                @default(0)
-  optedOutRecipients    Int                @default(0)
-  unknownConsent        Int                @default(0)
+  segmentContacts       Int                 @default(0)
+  eligibleRecipients    Int                 @default(0)
+  optedOutRecipients    Int                 @default(0)
+  unknownConsent        Int                 @default(0)
   startedAt             DateTime?
   completedAt           DateTime?
   cancelledAt           DateTime?
-  error                 String?            @db.VarChar(1000)
-  company               Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  segment               ContactSegment     @relation(fields: [segmentId], references: [id], onDelete: Restrict)
-  whatsappConnection    WhatsAppConnection @relation(fields: [whatsappConnectionId], references: [id], onDelete: Restrict)
-  createdByMembership   CompanyMembership  @relation(fields: [createdByMembershipId], references: [id], onDelete: Restrict)
+  error                 String?             @db.VarChar(1000)
+  company               Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  segment               ContactSegment      @relation(fields: [segmentId], references: [id], onDelete: Restrict)
+  whatsappConnection    WhatsAppConnection  @relation(fields: [whatsappConnectionId], references: [id], onDelete: Restrict)
+  createdByMembership   CompanyMembership   @relation(fields: [createdByMembershipId], references: [id], onDelete: Restrict)
   recipients            CampaignRecipient[]
   events                CampaignEvent[]
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 
   @@index([companyId, status, updatedAt])
   @@index([segmentId, createdAt])

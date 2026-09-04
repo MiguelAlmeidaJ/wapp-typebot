@@ -6,6 +6,8 @@ export type WappPermission =
   | "observability.read"
   | "automations.read"
   | "automations.manage"
+  | "chatbots.read"
+  | "chatbots.manage"
   | "reports.read"
   | "contacts.read"
   | "contacts.manage"
@@ -46,6 +48,8 @@ const permissionsByRole: Record<
     "reports.read",
     "automations.manage",
     "automations.read",
+    "chatbots.read",
+    "chatbots.manage",
     "admin.test",
     "audit.read",
     "observability.read",
@@ -83,6 +87,8 @@ const permissionsByRole: Record<
     "reports.read",
     "automations.manage",
     "automations.read",
+    "chatbots.read",
+    "chatbots.manage",
     "admin.test",
     "audit.read",
     "observability.read",
@@ -120,6 +126,8 @@ const permissionsByRole: Record<
     "reports.read",
     "automations.manage",
     "automations.read",
+    "chatbots.read",
+    "chatbots.manage",
     "observability.read",
     "contacts.read",
     "contacts.manage",
@@ -148,6 +156,7 @@ const permissionsByRole: Record<
   ],
   AGENT: [
     "automations.read",
+    "chatbots.read",
     "contacts.read",
     "contacts.manage",
     "quickReplies.read",

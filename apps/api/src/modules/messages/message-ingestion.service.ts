@@ -20,6 +20,7 @@ import {
   contactCreationName,
   shouldPromoteWhatsappName
 } from "./contact-identity.js";
+import { handleInboundChatbot } from "../chatbots/chatbot.orchestrator.js";
 
 function activeTicketKey(
   connectionId: string,
@@ -369,6 +370,13 @@ export async function ingestEvolutionMessage(
       trigger:
         "INBOUND_MESSAGE"
     });
+
+    if (parsed.type === "TEXT" && parsed.body) {
+      await handleInboundChatbot({
+        ticketId: ticket.id,
+        message: parsed.body
+      });
+    }
   }
 
   return {

@@ -97,7 +97,43 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(26_214_400),
-  TYPEBOT_URL: z.string().url().optional().or(z.literal(""))
+  TYPEBOT_URL: z.string().url().optional().or(z.literal("")),
+  TYPEBOT_ENABLED: booleanFromEnv,
+  TYPEBOT_API_URL: z.string().url().optional().or(z.literal("")),
+  TYPEBOT_API_TOKEN: z.string().min(1).optional().or(z.literal("")),
+  TYPEBOT_WEBHOOK_SECRET: z.string().min(32).optional().or(z.literal("")),
+  TYPEBOT_REQUEST_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(1_000)
+    .max(60_000)
+    .default(15_000)
+}).superRefine((value, context) => {
+  if (!value.TYPEBOT_ENABLED) return;
+
+  if (!value.TYPEBOT_API_URL) {
+    context.addIssue({
+      code: "custom",
+      path: ["TYPEBOT_API_URL"],
+      message: "TYPEBOT_API_URL is required when TYPEBOT_ENABLED=true"
+    });
+  }
+
+  if (!value.TYPEBOT_API_TOKEN) {
+    context.addIssue({
+      code: "custom",
+      path: ["TYPEBOT_API_TOKEN"],
+      message: "TYPEBOT_API_TOKEN is required when TYPEBOT_ENABLED=true"
+    });
+  }
+
+  if (!value.TYPEBOT_WEBHOOK_SECRET) {
+    context.addIssue({
+      code: "custom",
+      path: ["TYPEBOT_WEBHOOK_SECRET"],
+      message: "TYPEBOT_WEBHOOK_SECRET is required when TYPEBOT_ENABLED=true"
+    });
+  }
 });
 
 const parsed = envSchema.safeParse(process.env);

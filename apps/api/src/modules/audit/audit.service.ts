@@ -13,6 +13,7 @@ export type AuditEntityType =
   | "QUICK_REPLY"
   | "WHATSAPP_CONNECTION"
   | "AUTOMATION_RULE"
+  | "CHATBOT_FLOW"
   | "CONTACT_DATA";
 
 function jsonValue(
@@ -124,6 +125,7 @@ export async function snapshotAuditEntity(input: {
         select: {
           id: true,
           name: true,
+          slug: true,
           isActive:
             true,
           members: {
@@ -220,6 +222,14 @@ export async function snapshotAuditEntity(input: {
             input.entityId,
           companyId:
             input.companyId
+        }
+      });
+
+    case "CHATBOT_FLOW":
+      return prisma.chatbotFlow.findFirst({
+        where: {
+          id: input.entityId,
+          companyId: input.companyId
         }
       });
 
