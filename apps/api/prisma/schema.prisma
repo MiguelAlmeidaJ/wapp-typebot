@@ -201,6 +201,7 @@ model Company {
   name                    String                   @db.VarChar(160)
   slug                    String                   @unique @db.VarChar(80)
   status                  CompanyStatus            @default(ACTIVE)
+  typebotWorkspaceId      String?                  @unique @db.VarChar(190)
   firstResponseSlaMinutes Int                      @default(15)
   replySlaMinutes         Int                      @default(30)
   memberships             CompanyMembership[]
@@ -554,6 +555,7 @@ model ChatbotFlow {
   name                 String             @db.VarChar(160)
   engine               ChatbotEngine      @default(TYPEBOT)
   externalId           String             @db.VarChar(190)
+  externalTypebotId    String?            @unique @db.VarChar(190)
   isActive             Boolean            @default(true)
   activeKey            String?            @unique @db.VarChar(100)
   company              Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)

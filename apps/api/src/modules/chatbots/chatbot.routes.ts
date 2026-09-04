@@ -8,6 +8,7 @@ import { AppError } from "../../errors/app-error.js";
 import { TypebotClient } from "../../integrations/typebot/typebot.client.js";
 import { mapTypebotOutput } from "../../integrations/typebot/typebot.mapper.js";
 import { requirePermission } from "../auth/auth.guard.js";
+import { createManagedChatbotFlow } from "./chatbot-management.service.js";
 import {
   createChatbotFlow,
   listChatbotFlows,
@@ -19,7 +20,7 @@ const flowParamsSchema = z.object({ id: z.string().uuid() });
 const createFlowSchema = z.object({
   name: z.string().trim().min(2).max(160),
   whatsappConnectionId: z.string().uuid(),
-  externalId: z.string().trim().min(1).max(190),
+  externalId: z.string().trim().min(1).max(190).optional(),
   isActive: z.boolean().optional()
 });
 const patchFlowSchema = createFlowSchema.partial().refine(
@@ -62,11 +63,26 @@ export async function chatbotRoutes(app: FastifyInstance) {
     const auth = await requirePermission(request, "chatbots.manage");
     const body = createFlowSchema.parse(request.body);
 
+    if (body.externalId) {
+      return reply.status(201).send({
+        chatbot: await createChatbotFlow({
+          companyId: auth.companyId,
+          actorMembershipId: auth.membershipId,
+          name: body.name,
+          whatsappConnectionId: body.whatsappConnectionId,
+          externalId: body.externalId,
+          isActive: body.isActive
+        })
+      });
+    }
+
     return reply.status(201).send({
-      chatbot: await createChatbotFlow({
+      chatbot: await createManagedChatbotFlow({
         companyId: auth.companyId,
         actorMembershipId: auth.membershipId,
-        ...body
+        name: body.name,
+        whatsappConnectionId: body.whatsappConnectionId,
+        isActive: body.isActive
       })
     });
   });

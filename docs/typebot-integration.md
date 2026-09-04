@@ -6,15 +6,17 @@ Typebot e envia todas as respostas ao WhatsApp pela Evolution.
 ## Configuração
 
 ```env
+TYPEBOT_URL=https://builder.typebot.example.com
 TYPEBOT_ENABLED=true
-TYPEBOT_API_URL=https://typebot.example.com/api
+TYPEBOT_API_URL=https://viewer.typebot.example.com/api
 TYPEBOT_API_TOKEN=replace-with-a-typebot-api-token
 TYPEBOT_WEBHOOK_SECRET=replace-with-at-least-32-random-characters
 TYPEBOT_REQUEST_TIMEOUT_MS=15000
 ```
 
-`TYPEBOT_API_URL` inclui o prefixo `/api`; o client acrescenta `/v1`.
-Credenciais ficam somente na API do Wapp.
+`TYPEBOT_URL` aponta para o Builder e é usado pela API administrativa do
+Wapp. `TYPEBOT_API_URL` aponta para o Viewer, inclui o prefixo `/api`, e o
+client de runtime acrescenta `/v1`. Credenciais ficam somente na API do Wapp.
 
 Depois de configurar o ambiente, aplique a migration:
 
@@ -34,10 +36,17 @@ Content-Type: application/json
 {
   "name": "Atendimento inicial",
   "whatsappConnectionId": "<uuid-da-conexao>",
-  "externalId": "<public-id-do-typebot>",
-  "isActive": true
+  "isActive": false
 }
 ```
+
+Quando `externalId` não é enviado, o Wapp cria automaticamente um workspace
+Typebot para a empresa (na primeira vez), cria e publica o Typebot e persiste
+o `publicId` e o ID administrativo. O bot nasce inativo por padrão para não
+processar conversas antes de receber conteúdo pelo editor do Wapp.
+
+Para compatibilidade, ainda é possível informar `externalId` para vincular um
+Typebot criado manualmente.
 
 Só pode existir um fluxo ativo por conexão. `GET /api/v1/chatbots` lista os
 fluxos e `PATCH /api/v1/chatbots/:id` altera ou desativa um fluxo.

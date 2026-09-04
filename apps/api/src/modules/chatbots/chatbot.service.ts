@@ -87,6 +87,7 @@ export async function createChatbotFlow(input: {
   name: string;
   whatsappConnectionId: string;
   externalId: string;
+  externalTypebotId?: string;
   isActive?: boolean;
 }) {
   await assertConnection(input.companyId, input.whatsappConnectionId);
@@ -113,6 +114,7 @@ export async function createChatbotFlow(input: {
       whatsappConnectionId: input.whatsappConnectionId,
       name: input.name.trim(),
       externalId: input.externalId.trim(),
+      externalTypebotId: input.externalTypebotId,
       isActive,
       activeKey: isActive ? input.whatsappConnectionId : null
     }
