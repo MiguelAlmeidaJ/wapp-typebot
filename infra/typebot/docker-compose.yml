@@ -1,0 +1,90 @@
+services:
+  typebot-db:
+    image: postgres:16
+    container_name: wapp-typebot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: typebot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: typebot_local
+    volumes:
+      - typebot-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d typebot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - typebot-network
+
+  typebot-redis:
+    image: redis:alpine
+    container_name: wapp-typebot-redis
+    restart: unless-stopped
+    command: --save 60 1 --loglevel warning
+    volumes:
+      - typebot-redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - typebot-network
+
+  typebot-builder:
+    image: baptistearno/typebot-builder:3.18.0
+    container_name: wapp-typebot-builder
+    restart: unless-stopped
+    depends_on:
+      typebot-db:
+        condition: service_healthy
+      typebot-redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://typebot-redis:6379
+    ports:
+      - "8082:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - typebot-network
+
+  typebot-viewer:
+    image: baptistearno/typebot-viewer:3.18.0
+    container_name: wapp-typebot-viewer
+    restart: unless-stopped
+    depends_on:
+      typebot-db:
+        condition: service_healthy
+      typebot-redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://typebot-redis:6379
+    ports:
+      - "8083:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - typebot-network
+
+  typebot-mail:
+    image: axllent/mailpit:latest
+    container_name: wapp-typebot-mail
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+    networks:
+      - typebot-network
+
+networks:
+  typebot-network:
+    driver: bridge
+
+volumes:
+  typebot-db-data:
+  typebot-redis-data:
