@@ -4,9 +4,9 @@ services:
     container_name: wapp-typebot-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: typebot
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: typebot_local
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - typebot-db-data:/var/lib/postgresql/data
     healthcheck:
