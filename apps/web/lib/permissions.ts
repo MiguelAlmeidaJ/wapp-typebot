@@ -3,6 +3,8 @@ import type { Role } from "./auth-types";
 export type UiPermission =
   | "dashboard.view"
   | "conversations.view"
+  | "chatbots.view"
+  | "chatbots.manage"
   | "reports.view"
   | "contacts.view"
   | "queues.manage"
@@ -29,6 +31,8 @@ const permissionsByRole: Record<
     "reports.view",
     "dashboard.view",
     "conversations.view",
+    "chatbots.view",
+    "chatbots.manage",
     "contacts.view",
     "queues.manage",
     "connections.manage",
@@ -50,6 +54,8 @@ const permissionsByRole: Record<
     "reports.view",
     "dashboard.view",
     "conversations.view",
+    "chatbots.view",
+    "chatbots.manage",
     "contacts.view",
     "queues.manage",
     "connections.manage",
@@ -71,6 +77,8 @@ const permissionsByRole: Record<
     "reports.view",
     "dashboard.view",
     "conversations.view",
+    "chatbots.view",
+    "chatbots.manage",
     "contacts.view",
     "pipeline.view",
     "pipeline.manage",
@@ -86,6 +94,7 @@ const permissionsByRole: Record<
   AGENT: [
     "dashboard.view",
     "conversations.view",
+    "chatbots.view",
     "contacts.view",
     "pipeline.view",
     "tasks.view",

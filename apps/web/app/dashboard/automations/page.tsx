@@ -11,6 +11,7 @@ import {
   useRouter
 } from "next/navigation";
 
+import { AutomationTabs } from "@/components/automations/automation-tabs";
 import {
   useAuth
 } from "@/components/auth-provider";
@@ -657,6 +658,8 @@ export default function AutomationsPage() {
           Conversas
         </button>
       </header>
+
+      <AutomationTabs active="rules" />
 
       {error && (
         <div className="inbox-error">
