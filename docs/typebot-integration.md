@@ -77,3 +77,17 @@ atendimento.
 
 Quando uma pessoa assume ou encerra o ticket, a sessão de chatbot é finalizada
 e respostas posteriores do bot deixam de ser enviadas.
+
+## Convivência com automações
+
+O Typebot processa a mensagem antes de as avaliações de automação serem
+agendadas. O job recebe a informação de que a mensagem pertenceu ao chatbot e
+aplica esta política:
+
+- `ADD_TAG`: executa normalmente;
+- `SET_QUEUE`: executa normalmente;
+- `ASSIGN_MEMBERSHIP`: executa e encerra a sessão do chatbot;
+- `SEND_TEXT`: é registrado como ignorado para não duplicar a resposta do bot.
+
+Jobs antigos, sem esse contexto, também bloqueiam `SEND_TEXT` quando encontram
+uma sessão de chatbot ativa no ticket.

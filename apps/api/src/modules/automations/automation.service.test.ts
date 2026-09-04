@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { automationActionDecision } from "./automation-chatbot.policy.js";
+
 function matches(input: {
   keyword?: string;
   onlyIfUnassigned?: boolean;
@@ -61,6 +63,49 @@ test(
           "Preciso da SEGUNDA VIA da fatura"
       }),
       true
+    );
+  }
+);
+
+test(
+  "chatbot-owned messages suppress only automation text",
+  () => {
+    assert.equal(
+      automationActionDecision({
+        actionType: "SEND_TEXT",
+        chatbotHandledSourceMessage: true,
+        hasActiveChatbotSession: false
+      }),
+      "SKIP_CHATBOT_TEXT"
+    );
+
+    for (const actionType of [
+      "ADD_TAG",
+      "SET_QUEUE",
+      "ASSIGN_MEMBERSHIP"
+    ] as const) {
+      assert.equal(
+        automationActionDecision({
+          actionType,
+          chatbotHandledSourceMessage: true,
+          hasActiveChatbotSession: true
+        }),
+        "EXECUTE"
+      );
+    }
+  }
+);
+
+test(
+  "an active chatbot suppresses text from legacy queued jobs",
+  () => {
+    assert.equal(
+      automationActionDecision({
+        actionType: "SEND_TEXT",
+        chatbotHandledSourceMessage: false,
+        hasActiveChatbotSession: true
+      }),
+      "SKIP_CHATBOT_TEXT"
     );
   }
 );

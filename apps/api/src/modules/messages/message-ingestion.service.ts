@@ -347,6 +347,16 @@ export async function ingestEvolutionMessage(
         preview(parsed)
     });
 
+    const chatbotResult =
+      parsed.type === "TEXT" && parsed.body
+        ? await handleInboundChatbot({
+            ticketId: ticket.id,
+            message: parsed.body
+          })
+        : {
+            handled: false
+          };
+
     if (!before) {
       scheduleAutomationEvaluation({
         companyId:
@@ -356,7 +366,9 @@ export async function ingestEvolutionMessage(
         sourceMessageId:
           message.id,
         trigger:
-          "TICKET_CREATED"
+          "TICKET_CREATED",
+        chatbotHandled:
+          chatbotResult.handled
       });
     }
 
@@ -368,15 +380,10 @@ export async function ingestEvolutionMessage(
       sourceMessageId:
         message.id,
       trigger:
-        "INBOUND_MESSAGE"
+        "INBOUND_MESSAGE",
+      chatbotHandled:
+        chatbotResult.handled
     });
-
-    if (parsed.type === "TEXT" && parsed.body) {
-      await handleInboundChatbot({
-        ticketId: ticket.id,
-        message: parsed.body
-      });
-    }
   }
 
   return {

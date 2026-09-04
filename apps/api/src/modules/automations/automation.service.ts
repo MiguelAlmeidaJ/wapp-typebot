@@ -10,6 +10,8 @@ import {
   notifyTicketAssignment
 } from "../notifications/notification.service.js";
 import { recordTicketEvent } from "../tickets/ticket-event.service.js";
+import { finishChatbotSessionForTicket } from "../chatbots/chatbot.service.js";
+import { automationActionDecision } from "./automation-chatbot.policy.js";
 
 export type AutomationTriggerValue =
   | "TICKET_CREATED"
@@ -1062,6 +1064,11 @@ async function executeAction(input: {
         }
       });
 
+      await finishChatbotSessionForTicket(
+        ticket.id,
+        "AUTOMATION_ASSIGNED_MEMBERSHIP"
+      );
+
       if (
         ticket.assignedMembershipId !==
         membership.id
@@ -1167,6 +1174,7 @@ export async function evaluateAutomationEvent(input: {
   sourceMessageId: string;
   trigger:
     AutomationTriggerValue;
+  chatbotHandled?: boolean;
 }) {
   const company =
     await prisma.company.findUnique({
@@ -1320,6 +1328,17 @@ export async function evaluateAutomationEvent(input: {
           }
         });
 
+      const activeChatbotSession =
+        await prisma.chatbotSession.findUnique({
+          where: {
+            activeKey:
+              input.ticketId
+          },
+          select: {
+            id: true
+          }
+        });
+
       const results:
         unknown[] = [];
 
@@ -1327,6 +1346,31 @@ export async function evaluateAutomationEvent(input: {
         const action
         of actions
       ) {
+        const decision =
+          automationActionDecision({
+            actionType:
+              action.type,
+            chatbotHandledSourceMessage:
+              input.chatbotHandled === true,
+            hasActiveChatbotSession:
+              Boolean(activeChatbotSession)
+          });
+
+        if (
+          decision ===
+          "SKIP_CHATBOT_TEXT"
+        ) {
+          results.push({
+            type:
+              "SEND_TEXT",
+            skipped:
+              true,
+            reason:
+              "CHATBOT_OWNS_MESSAGE"
+          });
+          continue;
+        }
+
         results.push(
           await executeAction({
             companyId:

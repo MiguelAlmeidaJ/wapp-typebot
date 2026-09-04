@@ -22,6 +22,7 @@ export interface AutomationJobData {
   sourceMessageId: string;
   trigger:
     AutomationTriggerValue;
+  chatbotHandled?: boolean;
 }
 
 let queue:
