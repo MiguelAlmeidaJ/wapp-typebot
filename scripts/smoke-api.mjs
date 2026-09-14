@@ -2,15 +2,22 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
+import { loadProductionEnv } from "./lib/load-production-env.mjs";
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const envFile = resolve(
   root,
   process.env.WAPP_ENV_FILE || "infra/pm2/production.env"
 );
+const smokeApiOverride = process.env.WAPP_SMOKE_API_URL;
+const smokeTimeoutOverride = process.env.WAPP_SMOKE_TIMEOUT_MS;
 
 if (existsSync(envFile)) {
-  process.loadEnvFile(envFile);
+  loadProductionEnv(envFile);
 }
+
+if (smokeApiOverride) process.env.WAPP_SMOKE_API_URL = smokeApiOverride;
+if (smokeTimeoutOverride) process.env.WAPP_SMOKE_TIMEOUT_MS = smokeTimeoutOverride;
 
 const baseUrl = (
   process.env.WAPP_SMOKE_API_URL ||
