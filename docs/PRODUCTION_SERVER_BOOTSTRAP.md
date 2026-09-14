@@ -174,7 +174,7 @@ An Nginx server-block example is versioned at:
 infra/pm2/nginx.conf.example
 ```
 
-It routes:
+For Nginx installed directly on the same host, it routes:
 
 ```text
 /api/*      -> 127.0.0.1:4401
@@ -184,7 +184,7 @@ all others  -> 127.0.0.1:3301
 
 The API location disables proxy buffering and uses a long read timeout because `/api/v1/realtime/events` is a Server-Sent Events stream.
 
-If using Nginx Proxy Manager, configure the main proxy host to `127.0.0.1:3301`, then add custom locations for `/api/` and `/health` that forward to `127.0.0.1:4401`. Disable buffering for the API/SSE location and keep WebSocket support enabled if the proxy product requires it globally.
+If Nginx Proxy Manager or another reverse proxy runs inside Docker, do not use `127.0.0.1` as the upstream host: inside that container, loopback points back to the proxy container itself. Use a host address reachable from the proxy container, such as an explicitly configured `host.docker.internal`/host-gateway mapping, a Docker network alias, or the server address allowed by your firewall. Forward the main site to port `3301`, and add `/api/` and `/health` locations to port `4401`. Keep the PM2 services themselves non-public and restrict those upstream ports to the reverse proxy path only.
 
 Public TLS must be valid before the final smoke test.
 
