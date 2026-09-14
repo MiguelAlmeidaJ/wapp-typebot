@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { parseEnv } = require("node:util");
 
 const root = __dirname;
 
@@ -19,7 +20,7 @@ if (!envPath || !fs.existsSync(envPath)) {
   );
 }
 
-process.loadEnvFile(envPath);
+Object.assign(process.env, parseEnv(fs.readFileSync(envPath, "utf8")));
 
 const apiPort = String(process.env.PORT || 4401);
 const webPort = String(process.env.WEB_PORT || 3301);
