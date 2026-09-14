@@ -4,9 +4,11 @@ This runbook prepares a fresh Linux application server for the PM2 production to
 
 The Wapp application processes are:
 
-- `wapp-api` on `127.0.0.1:4401`
+- `wapp-api` on port `4401`
 - `wapp-worker`
-- `wapp-web` on `127.0.0.1:3301`
+- `wapp-web` on port `3301`
+
+By default API and Web bind to `127.0.0.1`. When Dockerized Evolution, Typebot or a reverse proxy must reach Wapp through the host, bind only the required process to the host's specific private Docker gateway address instead. Never use `0.0.0.0` in production.
 
 Only the reverse proxy should expose public HTTP/HTTPS traffic.
 
@@ -133,6 +135,8 @@ Lock down the file:
 chmod 600 infra/pm2/production.env
 ```
 
+The file is authoritative for Wapp production processes. Values inherited from the interactive shell do not override the production file.
+
 ## 7. Static preflight
 
 Run:
@@ -141,7 +145,9 @@ Run:
 pnpm prod:preflight
 ```
 
-This blocks common unsafe configurations, including public API/Web binds, weak or placeholder secrets, insecure cookies, missing MySQL CA, mismatched Prisma TLS settings and unsafe environment-file permissions.
+This blocks common unsafe configurations, including wildcard/public API/Web binds, weak or placeholder secrets, insecure cookies, missing MySQL CA, mismatched Prisma TLS settings and unsafe environment-file permissions.
+
+Allowed bind addresses are loopback or a specific RFC1918/ULA private address. `0.0.0.0` and `::` are rejected.
 
 ## 8. Real server readiness
 
@@ -166,7 +172,7 @@ The server check validates the actual host and network, including:
 
 Reverse-proxy and PM2-startup checks are warnings until those pieces are configured. Database, Redis, Evolution, certificate and filesystem failures are blocking.
 
-## 9. Reverse proxy
+## 9. Reverse proxy and Docker host access
 
 An Nginx server-block example is versioned at:
 
@@ -174,7 +180,7 @@ An Nginx server-block example is versioned at:
 infra/pm2/nginx.conf.example
 ```
 
-For Nginx installed directly on the same host, it routes:
+For Nginx installed directly on the same host, keep the defaults:
 
 ```text
 /api/*      -> 127.0.0.1:4401
@@ -184,7 +190,42 @@ all others  -> 127.0.0.1:3301
 
 The API location disables proxy buffering and uses a long read timeout because `/api/v1/realtime/events` is a Server-Sent Events stream.
 
-If Nginx Proxy Manager or another reverse proxy runs inside Docker, do not use `127.0.0.1` as the upstream host: inside that container, loopback points back to the proxy container itself. Use a host address reachable from the proxy container, such as an explicitly configured `host.docker.internal`/host-gateway mapping, a Docker network alias, or the server address allowed by your firewall. Forward the main site to port `3301`, and add `/api/` and `/health` locations to port `4401`. Keep the PM2 services themselves non-public and restrict those upstream ports to the reverse proxy path only.
+### Dockerized Evolution / Typebot / Nginx Proxy Manager
+
+A container cannot reach a process that listens only on the host's `127.0.0.1` through `host.docker.internal`. If a container needs direct access to Wapp, bind the required Wapp process to the host's specific private Docker gateway address.
+
+On a standard Linux Docker bridge, inspect the gateway with:
+
+```bash
+docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'
+```
+
+A common result is `172.17.0.1`. When that is the actual host gateway for your topology, API settings become, for example:
+
+```text
+HOST=172.17.0.1
+PORT=4401
+API_INTERNAL_URL=http://172.17.0.1:4401
+```
+
+Containers configured with:
+
+```yaml
+extra_hosts:
+  - "host.docker.internal:host-gateway"
+```
+
+can then use:
+
+```text
+http://host.docker.internal:4401
+```
+
+If Nginx Proxy Manager itself is containerized and must also reach the Web process, set `WEB_HOST` to the same appropriate private host-gateway address and forward the main site to port `3301` on that host address. Add `/api/` and `/health` locations to port `4401`.
+
+Do not replace the private bind with `0.0.0.0`. Do not publish `3301` or `4401` through Docker. Keep host firewall/security-group rules closed to public traffic on those ports.
+
+If a custom Docker network uses a different gateway, use the address that actually represents the host to those containers rather than assuming `172.17.0.1`.
 
 Public TLS must be valid before the final smoke test.
 
