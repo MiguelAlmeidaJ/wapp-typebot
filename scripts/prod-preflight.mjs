@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
+import { isIP } from "node:net";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -80,11 +81,44 @@ function validPort(name) {
   return value;
 }
 
-function requireLoopback(name) {
+function isLoopbackAddress(value) {
+  return ["127.0.0.1", "::1", "localhost"].includes(value);
+}
+
+function isPrivateIpv4(value) {
+  if (isIP(value) !== 4) return false;
+  const [a, b] = value.split(".").map(Number);
+  return (
+    a === 10 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168)
+  );
+}
+
+function isPrivateIpv6(value) {
+  if (isIP(value) !== 6) return false;
+  const normalized = value.toLowerCase();
+  return normalized.startsWith("fc") || normalized.startsWith("fd");
+}
+
+function requireSafeBind(name) {
   const value = required(name);
-  if (value && !["127.0.0.1", "::1", "localhost"].includes(value)) {
-    fail(`${name} must bind to loopback in the PM2 production topology.`);
+  if (!value) return "";
+
+  if (isLoopbackAddress(value)) return value;
+
+  if (value === "0.0.0.0" || value === "::") {
+    fail(`${name} must not bind to every interface in production. Use loopback or a specific private host/Docker address.`);
+    return value;
   }
+
+  if (isPrivateIpv4(value) || isPrivateIpv6(value)) {
+    warn(`${name} binds to private address ${value}. Ensure ports 3301/4401 are not exposed by the public firewall.`);
+    return value;
+  }
+
+  fail(`${name} must bind to loopback or a specific RFC1918/ULA private address.`);
+  return value;
 }
 
 function requirePrismaTls(name, parsed, tlsCaPath) {
@@ -135,19 +169,33 @@ if (nodeMajor !== 24) {
 commandExists("pnpm");
 commandExists("pm2");
 
-requireLoopback("HOST");
-requireLoopback("WEB_HOST");
-validPort("PORT");
+const apiHost = requireSafeBind("HOST");
+requireSafeBind("WEB_HOST");
+const apiPort = validPort("PORT");
 validPort("WEB_PORT");
 
 const webUrl = validUrl("WEB_URL", ["https:"]);
 const publicApiUrl = validUrl("NEXT_PUBLIC_API_URL", ["https:"]);
-validUrl("API_INTERNAL_URL", ["http:", "https:"]);
+const internalApiUrl = validUrl("API_INTERNAL_URL", ["http:", "https:"]);
 const databaseUrl = validUrl("DATABASE_URL", ["mysql:"]);
 const shadowDatabaseUrl = validUrl("SHADOW_DATABASE_URL", ["mysql:"]);
 validUrl("REDIS_URL", ["redis:", "rediss:"]);
 validUrl("EVOLUTION_BASE_URL", ["http:", "https:"]);
 const webhookBaseUrl = validUrl("EVOLUTION_WEBHOOK_BASE_URL", ["https:"]);
+
+if (internalApiUrl && Number(internalApiUrl.port || (internalApiUrl.protocol === "https:" ? 443 : 80)) !== apiPort) {
+  fail(`API_INTERNAL_URL must use the API PORT (${apiPort}).`);
+}
+
+if (internalApiUrl && apiHost) {
+  if (isLoopbackAddress(apiHost)) {
+    if (!isLoopbackAddress(internalApiUrl.hostname)) {
+      fail("API_INTERNAL_URL must use loopback when HOST is loopback.");
+    }
+  } else if (internalApiUrl.hostname !== apiHost) {
+    fail(`API_INTERNAL_URL hostname (${internalApiUrl.hostname}) must match private HOST (${apiHost}).`);
+  }
+}
 
 if (webUrl && publicApiUrl && webUrl.origin !== publicApiUrl.origin) {
   warn("WEB_URL and NEXT_PUBLIC_API_URL use different origins. Confirm this is intentional.");
