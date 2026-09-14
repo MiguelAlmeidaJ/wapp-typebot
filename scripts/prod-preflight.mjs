@@ -3,6 +3,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
+import { loadProductionEnv } from "./lib/load-production-env.mjs";
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const envFile = resolve(
   root,
@@ -108,7 +110,7 @@ if (!existsSync(envFile)) {
   process.exit(1);
 }
 
-process.loadEnvFile(envFile);
+loadProductionEnv(envFile);
 
 if (process.platform !== "win32") {
   try {
