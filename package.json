@@ -14,12 +14,13 @@
     "url": "git+https://github.com/MiguelAlmeidaJ/wapp-typebot.git"
   },
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "pnpm infra:up && turbo dev",
+    "dev:app": "turbo dev",
     "build": "turbo build",
     "typecheck": "turbo typecheck",
     "dev:web": "pnpm --filter @wapp/web dev",
     "dev:api": "pnpm --filter @wapp/api dev",
-    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d --wait",
     "infra:down": "docker compose -f infra/docker-compose.yml down",
     "infra:logs": "docker compose -f infra/docker-compose.yml logs -f",
     "db:generate": "pnpm --filter @wapp/api db:generate",
