@@ -72,9 +72,17 @@ try {
     "redis:7-alpine", "redis-server", "--requirepass", redisToken
   ]);
 
+  // mysqladmin ping can exit successfully while authentication still fails.
+  // Wait for the bootstrap user/database to be usable instead, which also
+  // proves the MySQL entrypoint finished its initialization phase.
   await waitFor({
     command: "docker",
-    args: ["exec", mysqlName, "mysqladmin", "ping", "-uroot", `-p${mysqlRoot}`, "--silent"]
+    args: [
+      "exec", mysqlName, "mysql",
+      "-uwapp", `-p${mysqlToken}`,
+      "-Dwapp_integration",
+      "-Nse", "SELECT 1"
+    ]
   }, "MySQL", 60);
 
   await waitFor({
