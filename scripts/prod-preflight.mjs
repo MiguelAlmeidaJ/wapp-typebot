@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -70,6 +70,38 @@ function commandExists(command, args = ["--version"]) {
   }
 }
 
+function validPort(name) {
+  const value = Number(required(name));
+  if (!Number.isInteger(value) || value < 1 || value > 65535) {
+    fail(`${name} must be an integer between 1 and 65535.`);
+  }
+  return value;
+}
+
+function requireLoopback(name) {
+  const value = required(name);
+  if (value && !["127.0.0.1", "::1", "localhost"].includes(value)) {
+    fail(`${name} must bind to loopback in the PM2 production topology.`);
+  }
+}
+
+function requirePrismaTls(name, parsed, tlsCaPath) {
+  if (!parsed) return;
+
+  const sslAccept = parsed.searchParams.get("sslaccept");
+  const sslCert = parsed.searchParams.get("sslcert");
+
+  if (sslAccept !== "strict") {
+    fail(`${name} must include sslaccept=strict.`);
+  }
+
+  if (!sslCert) {
+    fail(`${name} must include sslcert pointing to DATABASE_TLS_CA_PATH.`);
+  } else if (tlsCaPath && sslCert !== tlsCaPath) {
+    fail(`${name} sslcert (${sslCert}) must match DATABASE_TLS_CA_PATH (${tlsCaPath}).`);
+  }
+}
+
 if (!existsSync(envFile)) {
   console.error(`[prod:preflight] FAIL — environment file not found: ${envFile}`);
   console.error("Run pnpm prod:init first.");
@@ -77,6 +109,17 @@ if (!existsSync(envFile)) {
 }
 
 process.loadEnvFile(envFile);
+
+if (process.platform !== "win32") {
+  try {
+    const mode = statSync(envFile).mode & 0o777;
+    if ((mode & 0o077) !== 0) {
+      fail(`Production environment file permissions are ${mode.toString(8)}; use chmod 600 ${envFile}.`);
+    }
+  } catch (error) {
+    fail(`Could not inspect production environment file permissions: ${error.message}`);
+  }
+}
 
 if (process.env.NODE_ENV !== "production") {
   fail("NODE_ENV must be production.");
@@ -90,11 +133,16 @@ if (nodeMajor !== 24) {
 commandExists("pnpm");
 commandExists("pm2");
 
+requireLoopback("HOST");
+requireLoopback("WEB_HOST");
+validPort("PORT");
+validPort("WEB_PORT");
+
 const webUrl = validUrl("WEB_URL", ["https:"]);
 const publicApiUrl = validUrl("NEXT_PUBLIC_API_URL", ["https:"]);
 validUrl("API_INTERNAL_URL", ["http:", "https:"]);
 const databaseUrl = validUrl("DATABASE_URL", ["mysql:"]);
-validUrl("SHADOW_DATABASE_URL", ["mysql:"]);
+const shadowDatabaseUrl = validUrl("SHADOW_DATABASE_URL", ["mysql:"]);
 validUrl("REDIS_URL", ["redis:", "rediss:"]);
 validUrl("EVOLUTION_BASE_URL", ["http:", "https:"]);
 const webhookBaseUrl = validUrl("EVOLUTION_WEBHOOK_BASE_URL", ["https:"]);
@@ -109,6 +157,16 @@ if (webUrl && webhookBaseUrl && webUrl.origin !== webhookBaseUrl.origin) {
 
 if (databaseUrl && databaseUrl.hostname === "127.0.0.1") {
   warn("DATABASE_URL points to localhost. This is valid for a single-host deployment, but the database must not be exposed publicly.");
+}
+
+if (
+  databaseUrl &&
+  shadowDatabaseUrl &&
+  databaseUrl.hostname === shadowDatabaseUrl.hostname &&
+  databaseUrl.port === shadowDatabaseUrl.port &&
+  databaseUrl.pathname === shadowDatabaseUrl.pathname
+) {
+  fail("SHADOW_DATABASE_URL must point to a different database than DATABASE_URL.");
 }
 
 strongSecret("JWT_SECRET");
@@ -134,6 +192,10 @@ if (process.env.JOBS_EMBEDDED_WORKER !== "false") {
 
 const tlsCaPath = required("DATABASE_TLS_CA_PATH");
 if (tlsCaPath) {
+  if (!tlsCaPath.startsWith("/")) {
+    fail("DATABASE_TLS_CA_PATH must be an absolute path in production.");
+  }
+
   if (!existsSync(tlsCaPath)) {
     fail(`DATABASE_TLS_CA_PATH does not exist: ${tlsCaPath}`);
   } else {
@@ -144,6 +206,9 @@ if (tlsCaPath) {
   }
 }
 
+requirePrismaTls("DATABASE_URL", databaseUrl, tlsCaPath);
+requirePrismaTls("SHADOW_DATABASE_URL", shadowDatabaseUrl, tlsCaPath);
+
 const storageDriver = required("MEDIA_STORAGE_DRIVER");
 if (storageDriver === "s3") {
   required("S3_BUCKET");
@@ -153,7 +218,7 @@ if (storageDriver === "s3") {
 } else if (storageDriver === "local") {
   const mediaPath = required("MEDIA_STORAGE_PATH");
   if (mediaPath && !mediaPath.startsWith("/")) {
-    warn("MEDIA_STORAGE_PATH is relative. Prefer an absolute path outside the repository in production.");
+    fail("MEDIA_STORAGE_PATH must be an absolute path outside the repository in production.");
   }
 } else if (storageDriver) {
   fail("MEDIA_STORAGE_DRIVER must be local or s3.");
