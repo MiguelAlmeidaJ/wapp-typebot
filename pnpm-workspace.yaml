@@ -23,4 +23,5 @@ overrides:
   '@prisma/adapter-mariadb>mariadb': 3.5.3
   '@prisma/config>deepmerge-ts': 8.0.2
   'prisma>mysql2': 3.23.1
+  sharp: 0.35.4
 # --- /WAPP RH2 ---
