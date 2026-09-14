@@ -47,6 +47,7 @@
     "staging:rehearsal": "pnpm security:dependencies && pnpm verify && pnpm test:integration",
     "prod:init": "node scripts/prod-init.mjs",
     "prod:preflight": "node scripts/prod-preflight.mjs",
+    "prod:server:check": "node scripts/prod-server-check.mjs",
     "prod:build": "node scripts/prod-deploy.mjs --build-only",
     "prod:deploy": "node scripts/prod-deploy.mjs",
     "prod:smoke": "node scripts/smoke-api.mjs",
