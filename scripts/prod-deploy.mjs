@@ -3,6 +3,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
+import { loadProductionEnv } from "./lib/load-production-env.mjs";
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const envFile = resolve(
   root,
@@ -37,7 +39,7 @@ run(process.execPath, ["scripts/prod-preflight.mjs"], {
   }
 });
 
-process.loadEnvFile(envFile);
+loadProductionEnv(envFile);
 process.env.WAPP_ENV_FILE = envFile;
 
 if (process.env.MEDIA_STORAGE_DRIVER === "local") {
