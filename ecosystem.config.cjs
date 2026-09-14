@@ -4,37 +4,29 @@ const path = require("node:path");
 const root = __dirname;
 
 const defaultEnvPaths = [
+  path.join(root, "infra/pm2/production.env"),
   path.join(root, ".env"),
   path.join(root, "apps/api/.env")
 ];
 
 const envPath = process.env.WAPP_ENV_FILE
   ? path.resolve(root, process.env.WAPP_ENV_FILE)
-  : defaultEnvPaths.find(candidate =>
-      fs.existsSync(candidate)
-    );
+  : defaultEnvPaths.find(candidate => fs.existsSync(candidate));
 
 if (!envPath || !fs.existsSync(envPath)) {
   throw new Error(
-    "Environment file not found. Create apps/api/.env or set WAPP_ENV_FILE."
+    "Environment file not found. Run pnpm prod:init or set WAPP_ENV_FILE."
   );
 }
 
 process.loadEnvFile(envPath);
 
-const apiPort = String(
-  process.env.PORT || 4401
-);
-
-const webPort = String(
-  process.env.WEB_PORT || 3301
-);
+const apiPort = String(process.env.PORT || 4401);
+const webPort = String(process.env.WEB_PORT || 3301);
 
 function definedEnv(values) {
   return Object.fromEntries(
-    Object.entries(values).filter(
-      ([, value]) => value !== undefined
-    )
+    Object.entries(values).filter(([, value]) => value !== undefined)
   );
 }
 
@@ -80,143 +72,77 @@ const apiEnvKeys = [
 ];
 
 const sharedEnv = definedEnv({
-  ...Object.fromEntries(
-    apiEnvKeys.map(key => [key, process.env[key]])
-  ),
-
-  NODE_ENV:
-    process.env.NODE_ENV || "production",
+  ...Object.fromEntries(apiEnvKeys.map(key => [key, process.env[key]])),
+  NODE_ENV: process.env.NODE_ENV || "production",
   JOBS_EMBEDDED_WORKER: "false"
 });
 
 const standaloneCandidates = [
-  path.join(
-    root,
-    "apps/web/.next/standalone/apps/web/server.js"
-  ),
-
-  path.join(
-    root,
-    "apps/web/.next/standalone/server.js"
-  )
+  path.join(root, "apps/web/.next/standalone/apps/web/server.js"),
+  path.join(root, "apps/web/.next/standalone/server.js")
 ];
 
-const webServer =
-  standaloneCandidates.find(
-    candidate =>
-      fs.existsSync(candidate)
-  );
+const webServer = standaloneCandidates.find(candidate => fs.existsSync(candidate));
 
 if (!webServer) {
-  throw new Error(
-    "Next standalone server not found. Run pnpm build first."
-  );
+  throw new Error("Next standalone server not found. Run pnpm prod:build first.");
 }
+
+const common = {
+  instances: 1,
+  exec_mode: "fork",
+  autorestart: true,
+  watch: false,
+  restart_delay: 2000,
+  max_restarts: 10,
+  min_uptime: "10s",
+  kill_timeout: 15000,
+  time: true,
+  merge_logs: true
+};
 
 module.exports = {
   apps: [
     {
+      ...common,
       name: "wapp-api",
-
       cwd: root,
-
-      script: path.join(
-        root,
-        "apps/api/dist/server.js"
-      ),
-
+      script: path.join(root, "apps/api/dist/server.js"),
       interpreter: "node",
-
-      instances: 1,
-      exec_mode: "fork",
-
-      autorestart: true,
-      watch: false,
-
       max_memory_restart: "1G",
-
       env: {
         ...sharedEnv,
-
-        HOST: "127.0.0.1",
+        HOST: process.env.HOST || "127.0.0.1",
         PORT: apiPort,
-
-        JOBS_EMBEDDED_WORKER:
-          "false"
-      },
-
-      time: true,
-      merge_logs: true
+        JOBS_EMBEDDED_WORKER: "false"
+      }
     },
-
     {
+      ...common,
       name: "wapp-worker",
-
       cwd: root,
-
-      script: path.join(
-        root,
-        "apps/api/dist/worker.js"
-      ),
-
+      script: path.join(root, "apps/api/dist/worker.js"),
       interpreter: "node",
-
-      instances: 1,
-      exec_mode: "fork",
-
-      autorestart: true,
-      watch: false,
-
       max_memory_restart: "768M",
-
       env: {
         ...sharedEnv,
-
-        JOBS_EMBEDDED_WORKER:
-          "false"
-      },
-
-      time: true,
-      merge_logs: true
+        JOBS_EMBEDDED_WORKER: "false"
+      }
     },
-
     {
+      ...common,
       name: "wapp-web",
-
-      cwd: path.dirname(
-        webServer
-      ),
-
+      cwd: path.dirname(webServer),
       script: webServer,
-
       interpreter: "node",
-
-      instances: 1,
-      exec_mode: "fork",
-
-      autorestart: true,
-      watch: false,
-
       max_memory_restart: "1G",
-
       env: definedEnv({
         NODE_ENV: "production",
-
         PORT: webPort,
-
-        HOSTNAME:
-          process.env.WEB_HOST ||
-          "127.0.0.1",
-
-        NEXT_PUBLIC_API_URL:
-          process.env.NEXT_PUBLIC_API_URL,
-
-        API_INTERNAL_URL:
-          process.env.API_INTERNAL_URL
-      }),
-
-      time: true,
-      merge_logs: true
+        HOSTNAME: process.env.WEB_HOST || "127.0.0.1",
+        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+        API_INTERNAL_URL: process.env.API_INTERNAL_URL
+      })
     }
   ]
 };
