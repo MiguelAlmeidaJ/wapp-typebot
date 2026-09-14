@@ -5,6 +5,8 @@ import { connect } from "node:net";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { loadProductionEnv } from "./lib/load-production-env.mjs";
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const envFile = resolve(
   root,
@@ -99,7 +101,7 @@ if (!existsSync(envFile)) {
   process.exit(1);
 }
 
-process.loadEnvFile(envFile);
+loadProductionEnv(envFile);
 
 if (process.platform !== "linux") {
   warn(`Production target is Linux; current platform is ${process.platform}.`);
