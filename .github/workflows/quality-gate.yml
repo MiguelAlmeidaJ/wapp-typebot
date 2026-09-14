@@ -52,12 +52,14 @@ jobs:
 
       - name: Production script syntax
         run: |
+          node --check scripts/lib/load-production-env.mjs
           node --check scripts/prod-init.mjs
           node --check scripts/prod-preflight.mjs
           node --check scripts/prod-server-check.mjs
           node --check scripts/prod-deploy.mjs
           node --check scripts/prod-api-script.mjs
           node --check scripts/smoke-api.mjs
+          node --check ecosystem.config.cjs
 
       - name: Generate Prisma client
         run: pnpm db:generate
