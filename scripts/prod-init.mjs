@@ -1,7 +1,8 @@
 import { chmodSync, copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = resolve(new URL("..", import.meta.url).pathname);
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const source = resolve(root, "infra/pm2/production.env.example");
 const target = resolve(
   root,
