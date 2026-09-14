@@ -50,6 +50,15 @@ jobs:
       - name: Security scan
         run: pnpm security:scan
 
+      - name: Production script syntax
+        run: |
+          node --check scripts/prod-init.mjs
+          node --check scripts/prod-preflight.mjs
+          node --check scripts/prod-server-check.mjs
+          node --check scripts/prod-deploy.mjs
+          node --check scripts/prod-api-script.mjs
+          node --check scripts/smoke-api.mjs
+
       - name: Generate Prisma client
         run: pnpm db:generate
 
